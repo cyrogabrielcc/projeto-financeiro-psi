@@ -1,0 +1,29 @@
+package cef.financial.api;
+
+import cef.financial.domain.model.InvestmentProduct;
+import cef.financial.domain.service.RecommendationService;
+import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+
+import java.util.List;
+
+@Path("/")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+@Authenticated
+public class RecommendationResource {
+
+    @Inject
+    RecommendationService recommendationService;
+
+    // 6. GET /produtos-recomendados/{perfil}
+    @GET
+    @Path("/produtos-recomendados/{perfil}")
+    @RolesAllowed({"user", "admin"})
+    public List<InvestmentProduct> produtosRecomendados(@PathParam("perfil") String perfil) {
+        return recommendationService.recommendByProfile(perfil);
+    }
+}
