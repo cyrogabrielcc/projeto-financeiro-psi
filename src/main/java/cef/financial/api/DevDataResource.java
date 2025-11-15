@@ -14,7 +14,6 @@ import jakarta.ws.rs.core.Response;
 @Authenticated
 public class DevDataResource {
 
-    // Endpoint simples para popular dados de exemplo (opcional, só pra dev)
     @POST
     @Path("/dev/popular-produtos")
     @Transactional

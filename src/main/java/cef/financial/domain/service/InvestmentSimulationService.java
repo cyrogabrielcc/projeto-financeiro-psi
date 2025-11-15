@@ -23,7 +23,6 @@ public class InvestmentSimulationService {
     public InvestmentSimulationResponse simulate(InvestmentSimulationRequest request) {
         long start = System.currentTimeMillis();
         try {
-            // 1. Carregar produtos compatíveis do banco
             List<InvestmentProduct> candidates = InvestmentProduct.list(
                     "tipo = ?1 and (prazoMinimoMeses is null or prazoMinimoMeses <= ?2) " +
                             "and (prazoMaximoMeses is null or prazoMaximoMeses >= ?2)",

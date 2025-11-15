@@ -21,7 +21,6 @@ public class RiskProfileResource {
     @Inject
     TelemetryService telemetryService;
 
-    // 5. GET /perfil-risco/{clienteId}
     @GET
     @Path("/perfil-risco/{clienteId}")
     @RolesAllowed({"user", "admin"})

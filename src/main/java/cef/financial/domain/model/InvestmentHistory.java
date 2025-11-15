@@ -15,13 +15,13 @@ public class InvestmentHistory extends PanacheEntity {
     public Long clienteId;
 
     @Column(nullable = false)
-    public String tipo; // "CDB", "Fundo Multimercado", etc.
+    public String tipo;
 
     @Column(nullable = false)
     public double valor;
 
     @Column(nullable = false)
-    public double rentabilidade; // ex: 0.12
+    public double rentabilidade;
 
     @Column(nullable = false)
     public LocalDate data;

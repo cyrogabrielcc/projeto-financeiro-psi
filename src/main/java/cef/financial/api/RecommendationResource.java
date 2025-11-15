@@ -19,7 +19,6 @@ public class RecommendationResource {
     @Inject
     RecommendationService recommendationService;
 
-    // 6. GET /produtos-recomendados/{perfil}
     @GET
     @Path("/produtos-recomendados/{perfil}")
     @RolesAllowed({"user", "admin"})

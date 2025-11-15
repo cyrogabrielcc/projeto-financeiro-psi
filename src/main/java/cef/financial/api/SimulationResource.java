@@ -28,7 +28,6 @@ public class SimulationResource {
     @Inject
     InvestmentSimulationService simulationService;
 
-    // 1. POST /simular-investimento
     @POST
     @Path("/simular-investimento")
     @RolesAllowed({"user", "admin"})

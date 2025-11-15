@@ -57,13 +57,8 @@ public class AuthResource {
 
     private NewCookie createJwtCookie(String token) {
         return new NewCookie(
-                "access_token",      // nome do cookie
-                token               // valor
-                // path
-                // domain
-                // comment
-                // secure (true em prod com https)
-                // httpOnly
+                "access_token",
+                token
         );
     }
 }

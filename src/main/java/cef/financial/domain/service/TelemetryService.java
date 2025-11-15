@@ -2,7 +2,6 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.TelemetryResponse;
 import cef.financial.domain.model.TelemetryEvent;
-import io.quarkus.hibernate.orm.panache.Panache;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 

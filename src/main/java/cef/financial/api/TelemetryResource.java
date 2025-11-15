@@ -19,7 +19,6 @@ public class TelemetryResource {
     @Inject
     TelemetryService telemetryService;
 
-    // 4. GET /telemetria?inicio=2025-10-01&fim=2025-10-31
     @GET
     @Path("/telemetria")
     @RolesAllowed({"admin"})
