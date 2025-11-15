@@ -1,47 +1,49 @@
 package cef.financial.api;
 
 import cef.financial.domain.model.InvestmentProduct;
-import io.quarkus.security.Authenticated;
-import jakarta.annotation.security.RolesAllowed;
-import jakarta.transaction.Transactional;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
-@Path("/")
-@Consumes(MediaType.APPLICATION_JSON)
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Endpoints de apoio para ambiente de desenvolvimento.
+ * Não faz INSERT na base (para evitar problemas de lock no SQLite).
+ */
+@Path("/dev")
 @Produces(MediaType.APPLICATION_JSON)
-@Authenticated
 public class DevDataResource {
 
-    @POST
-    @Path("/dev/popular-produtos")
-    @Transactional
-    @RolesAllowed({"admin"})
-    public Response popularProdutosDev() {
-        if (InvestmentProduct.count() == 0) {
-            InvestmentProduct cdb = new InvestmentProduct();
-            cdb.nome = "CDB Caixa 2026";
-            cdb.tipo = "CDB";
-            cdb.rentabilidadeAnual = 0.12;
-            cdb.risco = "Baixo";
-            cdb.prazoMinimoMeses = 6;
-            cdb.prazoMaximoMeses = 24;
-            cdb.liquidezDias = 1;
-            cdb.perfilRecomendado = "Conservador";
-            cdb.persist();
+    /**
+     * GET /dev/produtos
+     *
+     * Retorna a lista de produtos cadastrados, apenas para conferência.
+     */
+    @GET
+    @Path("/produtos")
+    public List<InvestmentProduct> listarProdutos() {
+        return InvestmentProduct.listAll();
+    }
 
-            InvestmentProduct fundo = new InvestmentProduct();
-            fundo.nome = "Fundo Batatinha Doce da Nubank";
-            fundo.tipo = "Fundo";
-            fundo.rentabilidadeAnual = 0.18;
-            fundo.risco = "Alto";
-            fundo.prazoMinimoMeses = 3;
-            fundo.prazoMaximoMeses = 60;
-            fundo.liquidezDias = 30;
-            fundo.perfilRecomendado = "Agressivo";
-            fundo.persist();
-        }
-        return Response.ok().build();
+    /**
+     * GET /dev/status
+     *
+     * Retorna informações simples sobre o estado da base de produtos.
+     */
+    @GET
+    @Path("/status")
+    public Map<String, Object> status() {
+        long count = InvestmentProduct.count();
+
+        Map<String, Object> status = new HashMap<>();
+        status.put("qtdProdutos", count);
+        status.put("mensagem", count > 0
+                ? "Produtos carregados (via import.sql)."
+                : "Nenhum produto encontrado. Verifique o arquivo import.sql.");
+        return status;
     }
 }

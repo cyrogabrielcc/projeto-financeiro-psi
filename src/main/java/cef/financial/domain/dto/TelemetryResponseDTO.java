@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.util.List;
 
-public class TelemetryResponse {
+public class TelemetryResponseDTO {
 
     public List<ServiceMetric> servicos;
     public Periodo periodo;

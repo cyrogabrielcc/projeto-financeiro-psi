@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 
-public class InvestmentHistoryResponse {
+public class InvestmentHistoryResponseDTO {
 
     public Long id;
     public String tipo;

@@ -5,7 +5,7 @@ package cef.financial.domain.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
-public class InvestmentSimulationRequest {
+public class InvestmentSimulationRequestDTO {
 
     @NotNull
     public Long clienteId;

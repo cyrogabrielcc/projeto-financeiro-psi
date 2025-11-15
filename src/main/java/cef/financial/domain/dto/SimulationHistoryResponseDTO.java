@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.OffsetDateTime;
 
-public class SimulationHistoryResponse {
+public class SimulationHistoryResponseDTO {
 
     public Long id;
     public Long clienteId;

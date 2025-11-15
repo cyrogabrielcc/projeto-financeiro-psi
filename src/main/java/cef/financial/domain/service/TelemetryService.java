@@ -1,6 +1,6 @@
 package cef.financial.domain.service;
 
-import cef.financial.domain.dto.TelemetryResponse;
+import cef.financial.domain.dto.TelemetryResponseDTO;
 import cef.financial.domain.model.TelemetryEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -23,7 +23,7 @@ public class TelemetryService {
         event.persist();
     }
 
-    public TelemetryResponse getTelemetry(LocalDate from, LocalDate to) {
+    public TelemetryResponseDTO getTelemetry(LocalDate from, LocalDate to) {
         if (from == null) {
             from = LocalDate.now().minusDays(30);
         }
@@ -45,9 +45,9 @@ public class TelemetryService {
         Map<String, List<TelemetryEvent>> byService =
                 events.stream().collect(Collectors.groupingBy(e -> e.serviceName));
 
-        TelemetryResponse response = new TelemetryResponse();
+        TelemetryResponseDTO response = new TelemetryResponseDTO();
         response.servicos = byService.entrySet().stream().map(entry -> {
-            TelemetryResponse.ServiceMetric m = new TelemetryResponse.ServiceMetric();
+            TelemetryResponseDTO.ServiceMetric m = new TelemetryResponseDTO.ServiceMetric();
             m.nome = entry.getKey();
             m.quantidadeChamadas = entry.getValue().size();
             m.mediaTempoRespostaMs = entry.getValue().stream()
@@ -57,7 +57,7 @@ public class TelemetryService {
             return m;
         }).toList();
 
-        TelemetryResponse.Periodo periodo = new TelemetryResponse.Periodo();
+        TelemetryResponseDTO.Periodo periodo = new TelemetryResponseDTO.Periodo();
         periodo.inicio = from;
         periodo.fim = to;
         response.periodo = periodo;

@@ -1,6 +1,6 @@
 package cef.financial.domain.dto;
 
-public class RiskProfileResponse {
+public class RiskProfileResponseDTO {
 
     public Long clienteId;
     public String perfil;

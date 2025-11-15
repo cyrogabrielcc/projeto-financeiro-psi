@@ -1,9 +1,9 @@
 package cef.financial.api;
 
-import cef.financial.domain.dto.InvestmentSimulationRequest;
-import cef.financial.domain.dto.InvestmentSimulationResponse;
-import cef.financial.domain.dto.SimulationByProductDayResponse;
-import cef.financial.domain.dto.SimulationHistoryResponse;
+import cef.financial.domain.dto.InvestmentSimulationRequestDTO;
+import cef.financial.domain.dto.InvestmentSimulationResponseDTO;
+import cef.financial.domain.dto.SimulationByProductDayResponseDTO;
+import cef.financial.domain.dto.SimulationHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentSimulation;
 import cef.financial.domain.service.InvestmentSimulationService;
 import io.quarkus.security.Authenticated;
@@ -13,16 +13,18 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Path("/")
+@Path("")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@Authenticated
+//@Authenticated
+//@SecurityRequirement(name = "bearerAuth")
 public class SimulationResource {
 
     @Inject
@@ -30,9 +32,9 @@ public class SimulationResource {
 
     @POST
     @Path("/simular-investimento")
-    @RolesAllowed({"user", "admin"})
-    public Response simularInvestimento(@Valid InvestmentSimulationRequest request) {
-        InvestmentSimulationResponse response = simulationService.simulate(request);
+//    @RolesAllowed({"user", "admin"})
+    public Response simularInvestimento(@Valid InvestmentSimulationRequestDTO request) {
+        InvestmentSimulationResponseDTO response = simulationService.simulate(request);
         return Response.ok(response).build();
     }
 
@@ -40,10 +42,10 @@ public class SimulationResource {
     @GET
     @Path("/simulacoes")
     @RolesAllowed({"user", "admin"})
-    public List<SimulationHistoryResponse> listarSimulacoes() {
+    public List<SimulationHistoryResponseDTO> listarSimulacoes() {
         return InvestmentSimulation.<InvestmentSimulation>listAll().stream()
                 .map(sim -> {
-                    SimulationHistoryResponse dto = new SimulationHistoryResponse();
+                    SimulationHistoryResponseDTO dto = new SimulationHistoryResponseDTO();
                     dto.id = sim.id;
                     dto.clienteId = sim.clienteId;
                     dto.produto = sim.produto.nome;
@@ -59,7 +61,7 @@ public class SimulationResource {
     @GET
     @Path("/simulacoes/por-produto-dia")
     @RolesAllowed({"user", "admin"})
-    public List<SimulationByProductDayResponse> simulacoesPorProdutoDia() {
+    public List<SimulationByProductDayResponseDTO> simulacoesPorProdutoDia() {
         List<InvestmentSimulation> sims = InvestmentSimulation.listAll();
 
         Map<String, Map<LocalDate, List<InvestmentSimulation>>> grouped =
@@ -75,7 +77,7 @@ public class SimulationResource {
                             LocalDate dia = entryDia.getKey();
                             List<InvestmentSimulation> list = entryDia.getValue();
 
-                            SimulationByProductDayResponse dto = new SimulationByProductDayResponse();
+                            SimulationByProductDayResponseDTO dto = new SimulationByProductDayResponseDTO();
                             dto.produto = produto;
                             dto.data = dia;
                             dto.quantidadeSimulacoes = list.size();

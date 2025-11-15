@@ -1,25 +1,27 @@
 package cef.financial.domain.model;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "investment_product")
-public class InvestmentProduct extends PanacheEntity {
+public class InvestmentProduct extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // usa AUTOINCREMENT do SQLite
+    public Long id;
 
     @Column(nullable = false)
     public String nome;
 
     @Column(nullable = false)
-    public String tipo; // "CDB", "Fundo", etc.
+    public String tipo;              // CDB, Fundo, LCA etc.
 
-    @Column(name = "rentabilidade_anual", nullable = false)
-    public double rentabilidadeAnual; // ex: 0.12 = 12% a.a.
+    @Column(name = "rentabilidade_anual")
+    public Double rentabilidadeAnual;
 
-    @Column(nullable = false)
-    public String risco; // "Baixo", "Médio", "Alto"
+    @Column
+    public String risco;             // Baixo, Médio, Alto
 
     @Column(name = "prazo_min_meses")
     public Integer prazoMinimoMeses;
@@ -28,8 +30,8 @@ public class InvestmentProduct extends PanacheEntity {
     public Integer prazoMaximoMeses;
 
     @Column(name = "liquidez_dias")
-    public Integer liquidezDias; // D+0, D+1 etc.
+    public Integer liquidezDias;
 
     @Column(name = "perfil_recomendado")
-    public String perfilRecomendado; // "Conservador", "Moderado", "Agressivo"
+    public String perfilRecomendado;
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 
-public class SimulationByProductDayResponse {
+public class SimulationByProductDayResponseDTO {
 
     public String produto;
 

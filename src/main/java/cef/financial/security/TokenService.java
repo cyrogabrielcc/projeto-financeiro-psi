@@ -13,14 +13,14 @@ public class TokenService {
     public String generateToken(String username, Set<String> roles) {
 
         Instant now = Instant.now();
-        Instant exp = now.plus(Duration.ofHours(2));
+        Instant exp = now.plus(Duration.ofHours(2)); // token válido por 2 horas
 
         return Jwt
-                .issuer("investment-api")
-                .subject(username)
-                .groups(roles)
+                .issuer("investment-api")     // TEM que bater com mp.jwt.verify.issuer
+                .subject(username)            // sub
+                .groups(roles)                // claim 'groups' -> usado por @RolesAllowed
                 .issuedAt(now)
                 .expiresAt(exp)
-                .sign();
+                .sign();                      // assina usando smallrye.jwt.sign.key-location
     }
 }

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.OffsetDateTime;
 
-public class InvestmentSimulationResponse {
+public class InvestmentSimulationResponseDTO {
 
     public ProdutoValidado produtoValidado;
     public ResultadoSimulacao resultadoSimulacao;
@@ -12,12 +12,12 @@ public class InvestmentSimulationResponse {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
     public OffsetDateTime dataSimulacao;
 
-    public InvestmentSimulationResponse() {
+    public InvestmentSimulationResponseDTO() {
     }
 
-    public InvestmentSimulationResponse(ProdutoValidado produtoValidado,
-                                        ResultadoSimulacao resultadoSimulacao,
-                                        OffsetDateTime dataSimulacao) {
+    public InvestmentSimulationResponseDTO(ProdutoValidado produtoValidado,
+                                           ResultadoSimulacao resultadoSimulacao,
+                                           OffsetDateTime dataSimulacao) {
         this.produtoValidado = produtoValidado;
         this.resultadoSimulacao = resultadoSimulacao;
         this.dataSimulacao = dataSimulacao;

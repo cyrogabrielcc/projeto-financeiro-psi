@@ -1,6 +1,6 @@
 package cef.financial.domain.service;
 
-import cef.financial.domain.dto.RiskProfileResponse;
+import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -9,7 +9,7 @@ import java.util.List;
 @ApplicationScoped
 public class RiskProfileService {
 
-    public RiskProfileResponse calculateProfile(Long clienteId) {
+    public RiskProfileResponseDTO calculateProfile(Long clienteId) {
         List<InvestmentHistory> history =
                 InvestmentHistory.list("clienteId", clienteId);
 
@@ -56,7 +56,7 @@ public class RiskProfileService {
             descricao = "Perfil com alta tolerância ao risco e foco em rentabilidade.";
         }
 
-        RiskProfileResponse response = new RiskProfileResponse();
+        RiskProfileResponseDTO response = new RiskProfileResponseDTO();
         response.clienteId = clienteId;
         response.perfil = perfil;
         response.pontuacao = score;
