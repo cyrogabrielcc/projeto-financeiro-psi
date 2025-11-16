@@ -16,21 +16,12 @@ import java.time.OffsetDateTime;
 @Table(name = "HTE_CUSTOMER")
 public class Customer extends PanacheEntity {
 
-    @Column(name = "NOME", nullable = false, length = 255)
-    public String nome;
-
-    @Column(name = "DOCUMENTO", length = 20)
-    public String documento; // CPF/CNPJ (opcional)
-
-    @Column(name = "EMAIL", length = 255)
-    public String email;
-
     @Column(name = "PERFIL", length = 50)
     public String perfil; // Conservador / Moderado / Agressivo (se quiser persistir)
 
     @Column(name = "CRIADO_EM")
     public OffsetDateTime criadoEm;
 
-    @Column(name = "Renda Mensal")
+    @Column(name = "RENDA_MENSAL")
     public Double rendaMensal;
 }

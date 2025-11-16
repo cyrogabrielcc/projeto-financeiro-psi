@@ -25,6 +25,9 @@ public class InvestmentSimulationService {
 
     private static final Logger LOG = Logger.getLogger(InvestmentSimulationService.class);
 
+    // 422 nem sempre tem constante em Response.Status
+    private static final int STATUS_UNPROCESSABLE_ENTITY = 422;
+
     @Inject
     InvestmentProductRepository productRepository;
 
@@ -33,75 +36,24 @@ public class InvestmentSimulationService {
 
     @Transactional
     public InvestmentSimulationResponseDTO simulate(InvestmentSimulationRequestDTO request) {
-
         try {
-            // ===== 1. Validação básica do request =====
-            if (request == null) {
-                throw new WebApplicationException(
-                        "Requisição de simulação não pode ser nula.",
-                        Response.Status.BAD_REQUEST
-                );
-            }
+            validarRequest(request);
 
-            if (request.clienteId == null || request.clienteId <= 0) {
-                throw new WebApplicationException(
-                        "clienteId deve ser informado e maior que zero.",
-                        Response.Status.BAD_REQUEST
-                );
-            }
-
-            // produtoId agora é OPCIONAL: só valida se veio preenchido
-            if (request.produtoId != null && request.produtoId <= 0) {
-                throw new WebApplicationException(
-                        "produtoId, se informado, deve ser maior que zero.",
-                        Response.Status.BAD_REQUEST
-                );
-            }
-
-            if (request.valor <= 0) {
-                throw new WebApplicationException(
-                        "valor deve ser informado e maior que zero.",
-                        Response.Status.BAD_REQUEST
-                );
-            }
-
-            if (request.prazoMeses <= 0) {
-                throw new WebApplicationException(
-                        "prazoMeses deve ser informado e maior que zero.",
-                        Response.Status.BAD_REQUEST
-                );
-            }
-
-            // ===== 2. Escolha/validação do produto com base nos parâmetros =====
+            // 2) escolhe/valida produto com base nas regras
             InvestmentProduct product = escolherProdutoElegivel(request);
 
-            // ===== 3. Validação da rentabilidade =====
-            Double taxaAnualObj = product.rentabilidadeAnual;
-            if (taxaAnualObj == null) {
-                throw new WebApplicationException(
-                        "Rentabilidade anual não definida para o produto " + product.id,
-                        Response.Status.BAD_REQUEST
-                );
-            }
-            if (taxaAnualObj < 0) {
-                throw new WebApplicationException(
-                        "Rentabilidade anual inválida (negativa) para o produto " + product.id,
-                        Response.Status.BAD_REQUEST
-                );
-            }
-
-            double taxaAnual = taxaAnualObj;
+            // 3) valida rentabilidade do produto
+            double taxaAnual = validarRentabilidade(product);
             double taxaMensal = Math.pow(1 + taxaAnual, 1.0 / 12.0) - 1.0;
 
-            // ===== 4. Cálculo da simulação =====
+            // 4) cálculo da simulação
             double valorFinal = request.valor *
                     Math.pow(1 + taxaMensal, request.prazoMeses);
 
             double rentabilidadeEfetiva = (valorFinal / request.valor) - 1;
-
             OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
 
-            // ===== 5. Persistência da simulação =====
+            // 5) persistência da simulação
             InvestmentSimulation sim = new InvestmentSimulation();
             sim.clienteId = request.clienteId;
             sim.produto = product;
@@ -112,7 +64,7 @@ public class InvestmentSimulationService {
 
             simulationRepository.persist(sim);
 
-            // ===== 6. Montagem da resposta =====
+            // 6) resposta
             return new InvestmentSimulationResponseDTO(
                     new InvestmentSimulationResponseDTO.ProdutoValidado(
                             product.id,
@@ -130,9 +82,11 @@ public class InvestmentSimulationService {
             );
 
         } catch (WebApplicationException e) {
+            // Erros de validação / regra de negócio
             LOG.warnf(e, "Erro de validação na simulação de investimento: %s", e.getMessage());
             throw e;
         } catch (Exception e) {
+            // Erro inesperado (NPE, erro de banco, etc.)
             LOG.error("Erro inesperado ao simular investimento", e);
             throw new WebApplicationException(
                     "Erro interno ao processar a simulação de investimento.",
@@ -141,15 +95,60 @@ public class InvestmentSimulationService {
         }
     }
 
-    /**
-     * Escolhe um produto elegível com base nos parâmetros da requisição.
-     * - Se produtoId vier preenchido: valida se o produto existe e atende ao prazo.
-     * - Se não vier: filtra produtos por prazo/tipo e escolhe o de maior rentabilidadeAnual.
-     */
+    // ============================================================
+    // Validações de entrada
+    // ============================================================
+    private void validarRequest(InvestmentSimulationRequestDTO request) {
+
+        if (request == null) {
+            throw new WebApplicationException(
+                    "Requisição de simulação não pode ser nula.",
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        if (request.clienteId == null || request.clienteId <= 0) {
+            throw new WebApplicationException(
+                    "clienteId deve ser informado e maior que zero.",
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        // produtoId é opcional; se vier, deve ser > 0
+        if (request.produtoId != null && request.produtoId <= 0) {
+            throw new WebApplicationException(
+                    "produtoId, se informado, deve ser maior que zero.",
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        if (request.valor <= 0) {
+            throw new WebApplicationException(
+                    "valor deve ser informado e maior que zero.",
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        if (request.prazoMeses <= 0) {
+            throw new WebApplicationException(
+                    "prazoMeses deve ser informado e maior que zero.",
+                    Response.Status.BAD_REQUEST
+            );
+        }
+    }
+
+    // ============================================================
+    // Escolha / validação de produto
+    // ============================================================
+
+    // Escolhe um produto elegível com base nos parâmetros da requisição. Se produtoId vier preenchido: valida se o produto existe e atende ao prazo.
+    // Se não vier: filtra produtos por prazo/tipo e escolhe o de maior rentabilidadeAnual.
+
     private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request) {
 
-        // Caso 1: produtoId informado → valida se atende aos parâmetros
+        // Caso 1: produtoId informado → usa o produto explicitamente escolhido
         if (request.produtoId != null && request.produtoId > 0) {
+
             InvestmentProduct product = productRepository.findById(request.produtoId);
 
             if (product == null) {
@@ -167,17 +166,19 @@ public class InvestmentSimulationService {
                                 product.id,
                                 request.prazoMeses,
                                 product.prazoMinMeses != null ? product.prazoMinMeses : "-",
-                                product.prazoMaxMeses != null && product.prazoMaxMeses > 0 ? product.prazoMaxMeses : "-"
+                                (product.prazoMaxMeses != null && product.prazoMaxMeses > 0)
+                                        ? product.prazoMaxMeses : "-"
                         ),
                         Response.Status.BAD_REQUEST
                 );
             }
 
-            LOG.infof("Produto escolhido explicitamente pelo cliente: id=%d, nome=%s", product.id, product.nome);
+            LOG.infof("Produto escolhido explicitamente pelo cliente: id=%d, nome=%s",
+                    product.id, product.nome);
             return product;
         }
 
-        // Caso 2: produtoId NÃO informado → filtra produtos elegíveis
+        // Caso 2: produtoId NÃO informado → filtra produtos elegíveis automaticamente
         List<InvestmentProduct> todosProdutos = productRepository.listAll();
         if (todosProdutos.isEmpty()) {
             throw new WebApplicationException(
@@ -194,7 +195,7 @@ public class InvestmentSimulationService {
         if (elegiveis.isEmpty()) {
             throw new WebApplicationException(
                     "Nenhum produto atende aos parâmetros informados (prazo/tipo).",
-                    422 // Unprocessable Entity (nem sempre tem constante em todas as versões)
+                    STATUS_UNPROCESSABLE_ENTITY
             );
         }
 
@@ -232,5 +233,28 @@ public class InvestmentSimulationService {
                 product.tipo != null ? product.tipo.toUpperCase() : null,
                 tipoProdutoRequest.toUpperCase()
         );
+    }
+
+    // ============================================================
+    // Validação de rentabilidade
+    // ============================================================
+    private double validarRentabilidade(InvestmentProduct product) {
+        Double taxaAnualObj = product.rentabilidadeAnual;
+
+        if (taxaAnualObj == null) {
+            throw new WebApplicationException(
+                    "Rentabilidade anual não definida para o produto " + product.id,
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        if (taxaAnualObj < 0) {
+            throw new WebApplicationException(
+                    "Rentabilidade anual inválida (negativa) para o produto " + product.id,
+                    Response.Status.BAD_REQUEST
+            );
+        }
+
+        return taxaAnualObj;
     }
 }

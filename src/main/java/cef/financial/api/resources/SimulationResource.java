@@ -6,7 +6,6 @@ import cef.financial.domain.dto.SimulationByProductDayResponseDTO;
 import cef.financial.domain.dto.SimulationHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentSimulation;
 import cef.financial.domain.service.InvestmentSimulationService;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;

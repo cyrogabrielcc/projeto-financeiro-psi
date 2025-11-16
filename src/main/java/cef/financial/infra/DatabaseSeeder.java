@@ -2,10 +2,10 @@ package cef.financial.infra;
 
 import cef.financial.domain.model.InvestmentProduct;
 import cef.financial.domain.model.InvestmentSimulation;
-import cef.financial.domain.model.Customer; // AJUSTE se o nome for diferente
+import cef.financial.domain.model.Customer;
 import cef.financial.domain.repository.InvestmentProductRepository;
 import cef.financial.domain.repository.InvestmentSimulationRepository;
-import cef.financial.domain.repository.CustomerRepository; // AJUSTE se o nome for diferente
+import cef.financial.domain.repository.CustomerRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -26,7 +26,7 @@ public class DatabaseSeeder {
     InvestmentProductRepository productRepository;
 
     @Inject
-    CustomerRepository customerRepository; // precisa existir no seu projeto
+    CustomerRepository customerRepository;
 
     @Inject
     InvestmentSimulationRepository simulationRepository;
@@ -112,32 +112,24 @@ public class DatabaseSeeder {
 
         LOG.info("DatabaseSeeder: nenhum cliente encontrado. Populando clientes de teste...");
 
-        // ATENÇÃO: ajuste os campos conforme a sua entidade Customer
+        OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+
         Customer c1 = new Customer();
-        c1.nome = "Ana Silva";
-        c1.documento = "11111111111";     // CPF fictício
-        c1.email = "ana.silva@example.com";
         c1.rendaMensal = 5000.0;
         c1.perfil = "CONSERVADOR";
-        c1.criadoEm = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(6);
+        c1.criadoEm = agora.minusMonths(6);
         customerRepository.persist(c1);
 
         Customer c2 = new Customer();
-        c2.nome = "Bruno Souza";
-        c2.documento = "22222222222";
-        c2.email = "bruno.souza@example.com";
         c2.rendaMensal = 12000.0;
         c2.perfil = "MODERADO";
-        c2.criadoEm = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(3);
+        c2.criadoEm = agora.minusMonths(3);
         customerRepository.persist(c2);
 
         Customer c3 = new Customer();
-        c3.nome = "Carla Pereira";
-        c3.documento = "33333333333";
-        c3.email = "carla.pereira@example.com";
         c3.rendaMensal = 25000.0;
         c3.perfil = "ARROJADO";
-        c3.criadoEm = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(1);
+        c3.criadoEm = agora.minusMonths(1);
         customerRepository.persist(c3);
 
         LOG.infof("DatabaseSeeder: inseridos %d clientes de teste.", customerRepository.count());
@@ -164,23 +156,42 @@ public class DatabaseSeeder {
 
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
 
-        // Simulação 1 – cliente 1, produto 1
-        createSimulation(customers.get(0), products.get(0), 1000.0, 12, agora.minusDays(10));
+        // Vários cenários de valor e prazo para gerar bastante variedade
+        double[] valoresBase = { 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 20000.0 };
+        int[] prazosMeses   = { 3,    6,     12,     18,     24,      36      };
 
-        // Simulação 2 – cliente 1, produto 2
-        createSimulation(customers.get(0), products.get(1), 5000.0, 24, agora.minusDays(5));
+        long inicial = simCount;
+        int criadas = 0;
 
-        // Simulação 3 – cliente 2, produto 3
-        if (products.size() > 2) {
-            createSimulation(customers.get(1), products.get(2), 3000.0, 18, agora.minusDays(2));
+        for (int i = 0; i < customers.size(); i++) {
+            Customer customer = customers.get(i);
+
+            for (int j = 0; j < products.size(); j++) {
+                InvestmentProduct product = products.get(j);
+
+                for (int k = 0; k < valoresBase.length; k++) {
+                    double valorBase = valoresBase[k];
+
+                    // Pequenas variações por cliente e produto, pra não ficar tudo igual
+                    double valor = valorBase
+                            + (i * 700.0)   // variação por cliente
+                            + (j * 400.0);  // variação por produto
+
+                    int prazo = prazosMeses[k];
+
+                    // Espalha as datas no tempo: quanto mais "criadas", mais antiga a simulação
+                    long diasAtras = (long) (i * 10 + j * 5 + k + 1);
+                    OffsetDateTime dataSimulacao = agora.minusDays(diasAtras);
+
+                    createSimulation(customer, product, valor, prazo, dataSimulacao);
+                    criadas++;
+                }
+            }
         }
 
-        // Simulação 4 – cliente 3, produto 4 (se existir)
-        if (products.size() > 3) {
-            createSimulation(customers.get(2), products.get(3), 10000.0, 36, agora.minusDays(1));
-        }
-
-        LOG.infof("DatabaseSeeder: inseridas %d simulações de teste.", simulationRepository.count());
+        long total = simulationRepository.count();
+        LOG.infof("DatabaseSeeder: criadas %d simulações de teste (antes: %d, agora: %d).",
+                criadas, inicial, total);
     }
 
     private void createSimulation(Customer customer,
@@ -189,13 +200,13 @@ public class DatabaseSeeder {
                                   int prazoMeses,
                                   OffsetDateTime dataSimulacao) {
 
-        // cálculo bem simples, só para dados de exemplo
-        double taxaAnual = product.rentabilidadeAnual != null ? product.rentabilidadeAnual : 0.1;
+        // cálculo simples apenas para efeito de exemplo
+        double taxaAnual = product.rentabilidadeAnual != null ? product.rentabilidadeAnual : 0.10;
         double taxaMensal = Math.pow(1 + taxaAnual, 1.0 / 12.0) - 1.0;
         double valorFinal = valor * Math.pow(1 + taxaMensal, prazoMeses);
 
         InvestmentSimulation sim = new InvestmentSimulation();
-        sim.clienteId = customer.id;   // supondo que InvestmentSimulation guarda o id do cliente
+        sim.clienteId = customer.id;
         sim.produto = product;
         sim.valorInvestido = valor;
         sim.valorFinal = valorFinal;

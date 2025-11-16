@@ -26,9 +26,6 @@ public class CustomerResource {
         return entities.stream()
                 .map(c -> new CustomerResponseDTO(
                         c.id,          // ajusta se o campo for outro
-                        c.nome,
-                        c.documento,
-                        c.email,
                         c.perfil,
                         c.criadoEm
                 ))

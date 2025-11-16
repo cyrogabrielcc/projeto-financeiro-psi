@@ -22,7 +22,7 @@ public class RiskProfileResource {
 
     @GET
     @Path("/{clienteId}")
-    @RolesAllowed({"user", "admin"})
+    //@RolesAllowed({"user", "admin"})
     public RiskProfileResponseDTO perfilRisco(@PathParam("clienteId") Long clienteId) {
         long start = System.currentTimeMillis();
         try {
