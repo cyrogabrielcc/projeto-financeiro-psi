@@ -1,4 +1,4 @@
-package cef.financial.api;
+package cef.financial.api.resources;
 
 import cef.financial.domain.dto.InvestmentSimulationRequestDTO;
 import cef.financial.domain.dto.InvestmentSimulationResponseDTO;
@@ -6,14 +6,12 @@ import cef.financial.domain.dto.SimulationByProductDayResponseDTO;
 import cef.financial.domain.dto.SimulationHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentSimulation;
 import cef.financial.domain.service.InvestmentSimulationService;
-import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 
 import java.time.LocalDate;
 import java.util.List;

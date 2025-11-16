@@ -1,4 +1,4 @@
-package cef.financial.api;
+package cef.financial.api.resources;
 
 import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.service.RiskProfileService;

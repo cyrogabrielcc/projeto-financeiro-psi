@@ -1,4 +1,4 @@
-package cef.financial.api;
+package cef.financial.api.resources;
 
 import cef.financial.domain.model.InvestmentProduct;
 import jakarta.ws.rs.GET;
