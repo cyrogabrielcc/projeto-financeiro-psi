@@ -20,7 +20,6 @@ public class RiskProfileService {
         for (InvestmentHistory h : history) {
             totalValor += h.valor;
 
-            // proxy simples de risco: maior rentabilidade => maior risco
             if (h.rentabilidade >= 0.15) {
                 score += 10;
             } else if (h.rentabilidade >= 0.10) {
@@ -29,13 +28,11 @@ public class RiskProfileService {
                 score -= 3;
             }
 
-            // supondo que "Fundo Multimercado" é mais arriscado
             if (h.tipo != null && h.tipo.toLowerCase().contains("multimercado")) {
                 score += 5;
             }
         }
 
-        // Movimentação financeira: mais operações -> mais perfil ativo
         if (qtdOperacoes == 0) {
             score -= 10;
         } else if (qtdOperacoes > 5) {

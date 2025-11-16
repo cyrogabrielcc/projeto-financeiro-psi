@@ -3,18 +3,15 @@ package cef.financial.api;
 import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.service.RiskProfileService;
 import cef.financial.domain.service.TelemetryService;
-import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 
 @Path("/perfil-risco")
-@Authenticated
-@SecurityRequirement(name = "bearerAuth")
-//@Consumes(MediaType.APPLICATION_JSON)
-//@Produces(MediaType.APPLICATION_JSON)
+//@Authenticated
+//@SecurityRequirement(name = "bearerAuth")
 public class RiskProfileResource {
 
     @Inject
