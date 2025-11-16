@@ -30,4 +30,7 @@ public class Customer extends PanacheEntity {
 
     @Column(name = "CRIADO_EM")
     public OffsetDateTime criadoEm;
+
+    @Column(name = "Renda Mensal")
+    public Double rendaMensal;
 }

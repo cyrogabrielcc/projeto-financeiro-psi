@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 public class InvestmentSimulation extends PanacheEntity {
 
     @Column(nullable = false)
-    public Integer clienteId;
+    public Long clienteId;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "produto_id")

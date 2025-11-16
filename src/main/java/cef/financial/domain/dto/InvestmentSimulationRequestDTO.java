@@ -7,8 +7,7 @@ import jakarta.validation.constraints.NotNull;
 
 public class InvestmentSimulationRequestDTO {
 
-    @NotNull
-    public Integer clienteId;
+    public Long clienteId;
 
     @NotNull
     public Long produtoId;
