@@ -39,7 +39,7 @@ public class SimulationResource {
     // 2. GET /simulacoes
     @GET
     @Path("/simulacoes")
-    @RolesAllowed({"user", "admin"})
+    //@RolesAllowed({"user", "admin"})
     public List<SimulationHistoryResponseDTO> listarSimulacoes() {
         return InvestmentSimulation.<InvestmentSimulation>listAll().stream()
                 .map(sim -> {
@@ -58,7 +58,7 @@ public class SimulationResource {
     // 3. GET /simulacoes/por-produto-dia
     @GET
     @Path("/simulacoes/por-produto-dia")
-    @RolesAllowed({"user", "admin"})
+    //@RolesAllowed({"user", "admin"})
     public List<SimulationByProductDayResponseDTO> simulacoesPorProdutoDia() {
         List<InvestmentSimulation> sims = InvestmentSimulation.listAll();
 
