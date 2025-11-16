@@ -54,7 +54,7 @@ public class DatabaseSeeder {
 
         LOG.info("DatabaseSeeder: nenhum produto encontrado. Populando produtos de teste...");
 
-        // Produto 1 – CDB 100% CDI
+        // CDB 100% CDI - Conservador
         InvestmentProduct cdb100 = new InvestmentProduct();
         cdb100.nome = "CDB 100% CDI";
         cdb100.tipo = "CDB";
@@ -63,9 +63,10 @@ public class DatabaseSeeder {
         cdb100.prazoMinMeses = 6;
         cdb100.prazoMaxMeses = 36;
         cdb100.rentabilidadeAnual = 0.13;
+        cdb100.perfilRecomendado = "CONSERVADOR";
         productRepository.persist(cdb100);
 
-        // Produto 2 – CDB 120% CDI
+        // CDB 120% CDI - Moderado
         InvestmentProduct cdb120 = new InvestmentProduct();
         cdb120.nome = "CDB 120% CDI";
         cdb120.tipo = "CDB";
@@ -74,9 +75,10 @@ public class DatabaseSeeder {
         cdb120.prazoMinMeses = 12;
         cdb120.prazoMaxMeses = 48;
         cdb120.rentabilidadeAnual = 0.16;
+        cdb120.perfilRecomendado = "MODERADO";
         productRepository.persist(cdb120);
 
-        // Produto 3 – Tesouro Selic
+// Tesouro Selic - Conservador
         InvestmentProduct tesouroSelic = new InvestmentProduct();
         tesouroSelic.nome = "Tesouro Selic 2029";
         tesouroSelic.tipo = "TESOURO";
@@ -85,17 +87,19 @@ public class DatabaseSeeder {
         tesouroSelic.prazoMinMeses = 24;
         tesouroSelic.prazoMaxMeses = 60;
         tesouroSelic.rentabilidadeAnual = 0.11;
+        tesouroSelic.perfilRecomendado = "CONSERVADOR";
         productRepository.persist(tesouroSelic);
 
-        // Produto 4 – Fundo Multimercado
+// Fundo Multimercado - Agressivo
         InvestmentProduct fundoMulti = new InvestmentProduct();
         fundoMulti.nome = "Fundo Multimercado XYZ";
         fundoMulti.tipo = "FUNDO";
         fundoMulti.risco = "ALTO";
         fundoMulti.liquidezDias = 30;
         fundoMulti.prazoMinMeses = 12;
-        fundoMulti.prazoMaxMeses = 0; // 0 = sem limite
+        fundoMulti.prazoMaxMeses = 0; // sem limite
         fundoMulti.rentabilidadeAnual = 0.18;
+        fundoMulti.perfilRecomendado = "AGRESSIVO";
         productRepository.persist(fundoMulti);
 
         LOG.infof("DatabaseSeeder: inseridos %d produtos de teste.", productRepository.count());

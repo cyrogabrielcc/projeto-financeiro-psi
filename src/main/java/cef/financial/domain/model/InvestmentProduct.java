@@ -29,4 +29,7 @@ public class InvestmentProduct extends PanacheEntity {
 
     @Column(name = "prazo_max_meses", nullable = false)
     public Integer prazoMaxMeses;
+
+    @Column(name = "PERFIL_RECOMENDADO", length = 50)
+    public String perfilRecomendado;
 }

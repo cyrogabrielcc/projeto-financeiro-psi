@@ -9,6 +9,11 @@ import java.util.List;
 public class RecommendationService {
 
     public List<InvestmentProduct> recommendByProfile(String perfil) {
-        return InvestmentProduct.list("perfilRecomendado = ?1", perfil);
+        if (perfil == null) {
+            return List.of();
+        }
+        String normalizado = perfil.trim().toUpperCase();
+        return InvestmentProduct.list("UPPER(perfilRecomendado) = ?1", normalizado);
     }
 }
+
