@@ -6,6 +6,8 @@ import cef.financial.domain.dto.SimulationByProductDayResponseDTO;
 import cef.financial.domain.dto.SimulationHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentSimulation;
 import cef.financial.domain.service.InvestmentSimulationService;
+import io.quarkus.security.Authenticated;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -20,8 +22,8 @@ import java.util.stream.Collectors;
 @Path("")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-//@Authenticated
-//@SecurityRequirement(name = "bearerAuth")
+@Authenticated
+
 public class SimulationResource {
 
     @Inject
@@ -29,7 +31,7 @@ public class SimulationResource {
 
     @POST
     @Path("/simular-investimento")
-//    @RolesAllowed({"user", "admin"})
+    @RolesAllowed({"user", "admin"})
     public Response simularInvestimento(@Valid InvestmentSimulationRequestDTO request) {
         InvestmentSimulationResponseDTO response = simulationService.simulate(request);
         return Response.ok(response).build();

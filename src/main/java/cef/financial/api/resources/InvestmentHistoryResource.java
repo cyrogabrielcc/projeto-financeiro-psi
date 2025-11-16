@@ -2,6 +2,7 @@ package cef.financial.api.resources;
 
 import cef.financial.domain.dto.InvestmentHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
+import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -11,7 +12,7 @@ import java.util.List;
 @Path("/investimentos")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-//@Authenticated
+@Authenticated
 //@SecurityRequirement(name = "bearerAuth")
 public class InvestmentHistoryResource {
 

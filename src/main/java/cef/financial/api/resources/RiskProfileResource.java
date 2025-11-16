@@ -11,7 +11,6 @@ import jakarta.ws.rs.PathParam;
 
 @Path("/perfil-risco")
 //@Authenticated
-//@SecurityRequirement(name = "bearerAuth")
 public class RiskProfileResource {
 
     @Inject
@@ -22,7 +21,7 @@ public class RiskProfileResource {
 
     @GET
     @Path("/{clienteId}")
-    //@RolesAllowed({"user", "admin"})
+    @RolesAllowed({"user", "admin"})
     public RiskProfileResponseDTO perfilRisco(@PathParam("clienteId") Long clienteId) {
         long start = System.currentTimeMillis();
         try {
