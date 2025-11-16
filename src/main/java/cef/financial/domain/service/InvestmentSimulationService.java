@@ -2,8 +2,10 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.InvestmentSimulationRequestDTO;
 import cef.financial.domain.dto.InvestmentSimulationResponseDTO;
+import cef.financial.domain.model.Customer;
 import cef.financial.domain.model.InvestmentProduct;
 import cef.financial.domain.model.InvestmentSimulation;
+import cef.financial.domain.repository.CustomerRepository;
 import cef.financial.domain.repository.InvestmentProductRepository;
 import cef.financial.domain.repository.InvestmentSimulationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,8 +26,6 @@ import java.util.stream.Collectors;
 public class InvestmentSimulationService {
 
     private static final Logger LOG = Logger.getLogger(InvestmentSimulationService.class);
-
-    // 422 nem sempre tem constante em Response.Status
     private static final int STATUS_UNPROCESSABLE_ENTITY = 422;
 
     @Inject
@@ -34,10 +34,18 @@ public class InvestmentSimulationService {
     @Inject
     InvestmentSimulationRepository simulationRepository;
 
+    @Inject
+    CustomerRepository customerRepository; // <<<<<< INJETADO
+
     @Transactional
     public InvestmentSimulationResponseDTO simulate(InvestmentSimulationRequestDTO request) {
         try {
+            // 1) validação básica
             validarRequest(request);
+
+            // 1.1) garante que o cliente exista (ou cria) e obtem o ID real
+            Customer cliente = obterOuCriarCliente(request.clienteId);
+            Long clienteIdReal = cliente.id;
 
             // 2) escolhe/valida produto com base nas regras
             InvestmentProduct product = escolherProdutoElegivel(request);
@@ -55,7 +63,7 @@ public class InvestmentSimulationService {
 
             // 5) persistência da simulação
             InvestmentSimulation sim = new InvestmentSimulation();
-            sim.clienteId = request.clienteId;
+            sim.clienteId = clienteIdReal;   // <<< usa o ID real do cliente
             sim.produto = product;
             sim.valorInvestido = request.valor;
             sim.valorFinal = valorFinal;
@@ -82,17 +90,39 @@ public class InvestmentSimulationService {
             );
 
         } catch (WebApplicationException e) {
-            // Erros de validação / regra de negócio
             LOG.warnf(e, "Erro de validação na simulação de investimento: %s", e.getMessage());
             throw e;
         } catch (Exception e) {
-            // Erro inesperado (NPE, erro de banco, etc.)
             LOG.error("Erro inesperado ao simular investimento", e);
             throw new WebApplicationException(
                     "Erro interno ao processar a simulação de investimento.",
                     Response.Status.INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    // ============================================================
+    // Cliente: obter ou criar
+    // ============================================================
+    private Customer obterOuCriarCliente(Long clienteIdRequest) {
+        // Primeiro tenta achar um cliente com esse ID
+        Customer existente = customerRepository.findById(clienteIdRequest);
+        if (existente != null) {
+            LOG.debugf("Cliente %d encontrado na base.", clienteIdRequest);
+            return existente;
+        }
+
+        // Se não encontrou, cria um novo cliente "básico"
+        Customer novo = new Customer();
+        novo.perfil = "INDEFINIDO";
+        novo.rendaMensal = null;
+        novo.criadoEm = OffsetDateTime.now(ZoneOffset.UTC);
+
+        customerRepository.persist(novo);
+        LOG.infof("Cliente novo criado automaticamente. ID solicitado=%d, ID gerado=%d",
+                clienteIdRequest, novo.id);
+
+        return novo;
     }
 
     // ============================================================
@@ -114,7 +144,6 @@ public class InvestmentSimulationService {
             );
         }
 
-        // produtoId é opcional; se vier, deve ser > 0
         if (request.produtoId != null && request.produtoId <= 0) {
             throw new WebApplicationException(
                     "produtoId, se informado, deve ser maior que zero.",
@@ -138,15 +167,9 @@ public class InvestmentSimulationService {
     }
 
     // ============================================================
-    // Escolha / validação de produto
+    // Escolha / validação de produto  (igual ao seu)
     // ============================================================
-
-    // Escolhe um produto elegível com base nos parâmetros da requisição. Se produtoId vier preenchido: valida se o produto existe e atende ao prazo.
-    // Se não vier: filtra produtos por prazo/tipo e escolhe o de maior rentabilidadeAnual.
-
     private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request) {
-
-        // Caso 1: produtoId informado → usa o produto explicitamente escolhido
         if (request.produtoId != null && request.produtoId > 0) {
 
             InvestmentProduct product = productRepository.findById(request.produtoId);
@@ -178,7 +201,6 @@ public class InvestmentSimulationService {
             return product;
         }
 
-        // Caso 2: produtoId NÃO informado → filtra produtos elegíveis automaticamente
         List<InvestmentProduct> todosProdutos = productRepository.listAll();
         if (todosProdutos.isEmpty()) {
             throw new WebApplicationException(
@@ -199,11 +221,10 @@ public class InvestmentSimulationService {
             );
         }
 
-        // Escolhe o produto com maior rentabilidadeAnual (ignorando nulos)
         InvestmentProduct escolhido = elegiveis.stream()
                 .filter(p -> p.rentabilidadeAnual != null)
                 .max(Comparator.comparingDouble(p -> p.rentabilidadeAnual))
-                .orElse(elegiveis.get(0)); // fallback: primeiro da lista
+                .orElse(elegiveis.get(0));
 
         LOG.infof("Produto escolhido automaticamente: id=%d, nome=%s, tipo=%s, taxaAnual=%.4f",
                 escolhido.id, escolhido.nome, escolhido.tipo,
@@ -227,7 +248,7 @@ public class InvestmentSimulationService {
 
     private boolean tipoCompativel(InvestmentProduct product, String tipoProdutoRequest) {
         if (tipoProdutoRequest == null || tipoProdutoRequest.isBlank()) {
-            return true; // se o cliente não especificou tipo, qualquer tipo serve
+            return true;
         }
         return Objects.equals(
                 product.tipo != null ? product.tipo.toUpperCase() : null,
