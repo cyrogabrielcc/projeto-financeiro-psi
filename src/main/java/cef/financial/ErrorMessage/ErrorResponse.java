@@ -1,4 +1,4 @@
-package cef.financial.ErrorMessage.AuthErrorMessage;
+package cef.financial.ErrorMessage;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
