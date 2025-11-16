@@ -28,7 +28,7 @@ public class InvestmentHistoryResource {
             dto.tipo = h.tipo;
             dto.valor = h.valor;
             dto.rentabilidade = h.rentabilidade;
-            dto.data = h.data;
+            dto.data = h.dataInvestimento;
             return dto;
         }).toList();
     }

@@ -1,28 +1,30 @@
 package cef.financial.domain.model;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
+/**
+ * Representa um investimento REALIZADO pelo cliente.
+ * Usado pelo RiskProfileService para calcular o perfil de risco.
+ */
 @Entity
-@Table(name = "investment_history")
+@Table(name = "HTE_INVESTMENT_HISTORY")
 public class InvestmentHistory extends PanacheEntity {
 
-    @Column(nullable = false)
+    @Column(name = "CLIENTE_ID", nullable = false)
     public Long clienteId;
 
-    @Column(nullable = false)
-    public String tipo;
+    @Column(name = "TIPO", length = 100)
+    public String tipo; // ex: "CDB", "Fundo Multimercado", etc.
 
-    @Column(nullable = false)
+    @Column(name = "VALOR", nullable = false)
     public double valor;
 
-    @Column(nullable = false)
-    public double rentabilidade;
+    @Column(name = "RENTABILIDADE", nullable = false)
+    public double rentabilidade; // ex: 0.12 = 12%
 
-    @Column(nullable = false)
-    public LocalDate data;
+    @Column(name = "DATA_INVESTIMENTO")
+    public LocalDate dataInvestimento;
 }
