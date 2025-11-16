@@ -24,7 +24,7 @@ public class InvestmentSimulationResponseDTO {
     }
 
     public static class ProdutoValidado {
-        public Long id;
+        public Integer id;
         public String nome;
         public String tipo;
         public double rentabilidade;
@@ -33,7 +33,7 @@ public class InvestmentSimulationResponseDTO {
         public ProdutoValidado() {
         }
 
-        public ProdutoValidado(Long id, String nome, String tipo,
+        public ProdutoValidado(Integer id, String nome, String tipo,
                                double rentabilidade, String risco) {
             this.id = id;
             this.nome = nome;

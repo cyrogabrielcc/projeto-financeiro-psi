@@ -43,7 +43,7 @@ public class InvestmentSimulationService {
 
         InvestmentSimulationResponseDTO.ProdutoValidado produtoDTO =
                 new InvestmentSimulationResponseDTO.ProdutoValidado(
-                        produto.id,
+                        produto.externalId,
                         produto.nome,
                         produto.tipo,
                         produto.rentabilidadeAnual,
