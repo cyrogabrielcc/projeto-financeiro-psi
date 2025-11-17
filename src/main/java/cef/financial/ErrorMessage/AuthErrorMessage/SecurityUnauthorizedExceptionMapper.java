@@ -1,5 +1,6 @@
 package cef.financial.ErrorMessage.AuthErrorMessage;
 
+import cef.financial.ErrorMessage.ErrorResponse;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.core.Context;

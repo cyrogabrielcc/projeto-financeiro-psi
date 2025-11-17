@@ -5,10 +5,6 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
-/**
- * Representa um investimento REALIZADO pelo cliente.
- * Usado pelo RiskProfileService para calcular o perfil de risco.
- */
 @Entity
 @Table(name = "HTE_INVESTMENT_HISTORY")
 public class InvestmentHistory extends PanacheEntity {
