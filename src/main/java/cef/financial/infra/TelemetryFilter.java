@@ -17,7 +17,7 @@ public class TelemetryFilter implements ContainerRequestFilter, ContainerRespons
     private static final String START_TIME_PROPERTY = "telemetryStartTime";
 
     @Inject
-    TelemetryService telemetryService;
+    public TelemetryService telemetryService;
 
     @Override
     public void filter(ContainerRequestContext requestContext) {

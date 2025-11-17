@@ -1,0 +1,9 @@
+quarkus:
+  jacoco:
+    excludes:
+      - cef/financial/config
+      - cef/financial/domain/model/*
+      - cef/financial/domain/repository/*
+      - cef/financial/domain/repository/*
+      - cef/financial/infra/DatabaseInitializer.java
+      - cef/financial/infra/DatabaseSeeder.java
