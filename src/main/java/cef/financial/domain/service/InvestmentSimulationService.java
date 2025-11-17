@@ -115,7 +115,6 @@ public class InvestmentSimulationService {
         // Se não encontrou, cria um novo cliente "básico"
         Customer novo = new Customer();
         novo.perfil = "INDEFINIDO";
-        novo.rendaMensal = null;
         novo.criadoEm = OffsetDateTime.now(ZoneOffset.UTC);
 
         customerRepository.persist(novo);
@@ -277,5 +276,9 @@ public class InvestmentSimulationService {
         }
 
         return taxaAnualObj;
+    }
+
+    public List<InvestmentSimulation> listAllSimulations() {
+        return simulationRepository.listAll();
     }
 }

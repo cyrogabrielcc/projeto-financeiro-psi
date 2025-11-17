@@ -2,7 +2,9 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.TelemetryResponseDTO;
 import cef.financial.domain.model.TelemetryEvent;
+import cef.financial.domain.repository.TelemetryEventRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
@@ -20,6 +22,18 @@ public class TelemetryService {
 
     private static final Logger LOG = Logger.getLogger(TelemetryService.class);
 
+    @Inject
+    TelemetryEventRepository telemetryEventRepository;
+
+    // construtor padrão para o CDI
+    public TelemetryService() {
+    }
+
+    // construtor para testes unitários
+    public TelemetryService(TelemetryEventRepository telemetryEventRepository) {
+        this.telemetryEventRepository = telemetryEventRepository;
+    }
+
     @Transactional
     public void record(String serviceName, long durationMs) {
         try {
@@ -30,9 +44,9 @@ public class TelemetryService {
             event.durationMs = durationMs;
             event.timestamp = OffsetDateTime.now();
 
-            event.persist(); // ou persistAndFlush() se você preferir garantir flush imediato
+            telemetryEventRepository.persist(event);
+
         } catch (WebApplicationException e) {
-            // Já é uma exceção controlada, apenas registra e propaga
             LOG.warnf("Erro de validação ao registrar telemetria: %s", e.getMessage());
             throw e;
         } catch (Exception e) {
@@ -49,7 +63,7 @@ public class TelemetryService {
         try {
             PeriodoConsulta periodo = validarETratarPeriodo(from, to);
 
-            List<TelemetryEvent> events = TelemetryEvent.list(
+            List<TelemetryEvent> events = telemetryEventRepository.list(
                     "timestamp >= ?1 and timestamp < ?2",
                     periodo.start, periodo.endExclusive
             );
@@ -79,7 +93,6 @@ public class TelemetryService {
             return response;
 
         } catch (WebApplicationException e) {
-            // Erro de validação ou regra de negócio
             LOG.warnf("Erro de validação ao consultar telemetria: %s", e.getMessage());
             throw e;
         } catch (Exception e) {
@@ -90,8 +103,6 @@ public class TelemetryService {
             );
         }
     }
-
-    // ================== MÉTODOS DE TRATAMENTO/VALIDAÇÃO ==================
 
     private void validarParametrosRecord(String serviceName, long durationMs) {
         if (serviceName == null || serviceName.isBlank()) {
@@ -109,22 +120,16 @@ public class TelemetryService {
         }
     }
 
-    /**
-     * Trata nulos, garante período válido e monta o intervalo de datas.
-     */
     private PeriodoConsulta validarETratarPeriodo(LocalDate from, LocalDate to) {
         LocalDate hoje = LocalDate.now();
 
-        // Default: últimos 30 dias se não vier 'from'
         if (from == null) {
             from = hoje.minusDays(30);
         }
-        // Default: hoje se não vier 'to'
         if (to == null) {
             to = hoje;
         }
 
-        // Garante que from <= to
         if (from.isAfter(to)) {
             throw new WebApplicationException(
                     "Data inicial não pode ser maior que a data final.",
@@ -144,7 +149,6 @@ public class TelemetryService {
         return periodo;
     }
 
-    // Classe auxiliar só para organizar o período
     private static class PeriodoConsulta {
         LocalDate from;
         LocalDate to;

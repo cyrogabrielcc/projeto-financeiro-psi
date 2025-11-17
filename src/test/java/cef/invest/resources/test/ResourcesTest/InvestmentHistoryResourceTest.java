@@ -3,85 +3,106 @@ package cef.invest.resources.test.ResourcesTest;
 import cef.financial.api.resources.InvestmentHistoryResource;
 import cef.financial.domain.dto.InvestmentHistoryResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
+import cef.financial.domain.repository.InvestmentHistoryRepository;
 import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class InvestmentHistoryResourceTest {
 
-    private final InvestmentHistoryResource investmentHistoryResource = new InvestmentHistoryResource();
+    @Mock
+    InvestmentHistoryRepository investmentHistoryRepository;
+
+    private InvestmentHistoryResource resource;
+
+    @BeforeEach
+    void setUp() {
+        resource = new InvestmentHistoryResource(investmentHistoryRepository);
+    }
+
+    // ========================================================
+    // 1. TESTES DE ANOTAÇÕES
+    // ========================================================
 
     @Test
+    @DisplayName("A classe deve ter anotações corretas")
     void testClassAnnotations() {
-        // Verifica as anotações de classe
         assertTrue(InvestmentHistoryResource.class.isAnnotationPresent(Path.class));
-        assertEquals("/investimentos", InvestmentHistoryResource.class.getAnnotation(Path.class).value());
+        assertEquals("/investimentos",
+                InvestmentHistoryResource.class.getAnnotation(Path.class).value());
 
         assertTrue(InvestmentHistoryResource.class.isAnnotationPresent(Consumes.class));
+        assertEquals(MediaType.APPLICATION_JSON,
+                InvestmentHistoryResource.class.getAnnotation(Consumes.class).value()[0]);
+
         assertTrue(InvestmentHistoryResource.class.isAnnotationPresent(Produces.class));
+        assertEquals(MediaType.APPLICATION_JSON,
+                InvestmentHistoryResource.class.getAnnotation(Produces.class).value()[0]);
+
         assertTrue(InvestmentHistoryResource.class.isAnnotationPresent(Authenticated.class));
     }
 
     @Test
+    @DisplayName("O método deve ter as anotações corretas")
     void testMethodAnnotations() throws NoSuchMethodException {
         var method = InvestmentHistoryResource.class.getMethod("historicoInvestimentos", Long.class);
 
-        // Verifica anotações do método
         assertTrue(method.isAnnotationPresent(GET.class));
         assertTrue(method.isAnnotationPresent(RolesAllowed.class));
         assertTrue(method.isAnnotationPresent(Path.class));
 
-        RolesAllowed rolesAnnotation = method.getAnnotation(RolesAllowed.class);
-        assertArrayEquals(new String[]{"user", "admin"}, rolesAnnotation.value());
+        RolesAllowed roles = method.getAnnotation(RolesAllowed.class);
+        assertArrayEquals(new String[]{"user", "admin"}, roles.value());
+
         assertEquals("/{clienteId}", method.getAnnotation(Path.class).value());
     }
 
+    // ========================================================
+    // 2. TESTES DE MAPEAMENTO
+    // ========================================================
+
     @Test
-    void testMapeamentoInvestmentHistoryParaDTO() {
-        // Testa a lógica de mapeamento que está dentro do método
-        LocalDate dataInvestimento = LocalDate.of(2024, 1, 15);
+    @DisplayName("Mapeamento simples de InvestmentHistory → DTO")
+    void testMapeamentoSimples() {
+        LocalDate data = LocalDate.of(2024, 1, 15);
 
-        InvestmentHistory history = new InvestmentHistory();
-        history.id = 100L;
-        history.tipo = "RENDA_FIXA";
-        history.valor = 5000.0;
-        history.rentabilidade = 0.12;
-        history.dataInvestimento = dataInvestimento;
+        InvestmentHistory h = new InvestmentHistory();
+        h.id = 1L;
+        h.tipo = "RF";
+        h.valor = 1000;
+        h.rentabilidade = 0.10;
+        h.dataInvestimento = data;
 
-        // Simula a lógica de mapeamento do método original
-        InvestmentHistoryResponseDTO dto = mapearParaDTO(history);
+        InvestmentHistoryResponseDTO dto = mapear(h);
 
-        // Verifica o mapeamento
-        assertEquals(100L, dto.id);
-        assertEquals("RENDA_FIXA", dto.tipo);
-        assertEquals(5000.0, dto.valor);
-        assertEquals(0.12, dto.rentabilidade);
-        assertEquals(dataInvestimento, dto.data);
+        assertEquals(1L, dto.id);
+        assertEquals("RF", dto.tipo);
+        assertEquals(1000, dto.valor);
+        assertEquals(0.10, dto.rentabilidade);
+        assertEquals(data, dto.data);
     }
 
     @Test
-    void testMapeamentoComCamposNulos() {
-        // Testa a lógica de mapeamento com campos que podem ser nulos
-        InvestmentHistory history = new InvestmentHistory();
-        history.id = null;
-        history.tipo = null;
-        history.valor = 0.0;
-        history.rentabilidade = 0.0;
-        history.dataInvestimento = null;
+    @DisplayName("Mapeamento deve funcionar com valores nulos")
+    void testMapeamentoNulos() {
+        InvestmentHistory h = new InvestmentHistory();
 
-        // Simula a lógica de mapeamento do método original
-        InvestmentHistoryResponseDTO dto = mapearParaDTO(history);
+        InvestmentHistoryResponseDTO dto = mapear(h);
 
-        // Verifica o mapeamento
         assertNull(dto.id);
         assertNull(dto.tipo);
         assertEquals(0.0, dto.valor);
@@ -90,126 +111,169 @@ class InvestmentHistoryResourceTest {
     }
 
     @Test
-    void testEstruturaInvestmentHistoryResponseDTO() {
-        // Testa que o DTO pode ser instanciado e seus campos podem ser acessados
-        InvestmentHistoryResponseDTO dto = new InvestmentHistoryResponseDTO();
+    @DisplayName("Mapeamento deve funcionar com valores extremos")
+    void testMapeamentoExtremos() {
+        LocalDate data = LocalDate.of(9999, 12, 31);
+        InvestmentHistory h = new InvestmentHistory();
+        h.id = Long.MAX_VALUE;
+        h.tipo = "TIPO_EXTREMO";
+        h.valor = Double.MAX_VALUE;
+        h.rentabilidade = Double.MIN_VALUE;
+        h.dataInvestimento = data;
 
-        dto.id = 1L;
-        dto.tipo = "TESTE";
-        dto.valor = 1000.0;
-        dto.rentabilidade = 0.1;
-        dto.data = LocalDate.now();
-
-        assertEquals(1L, dto.id);
-        assertEquals("TESTE", dto.tipo);
-        assertEquals(1000.0, dto.valor);
-        assertEquals(0.1, dto.rentabilidade);
-        assertNotNull(dto.data);
-    }
-
-    @Test
-    void testInvestmentHistoryPodeSerInstanciado() {
-        // Garante que a classe InvestmentHistory pode ser instanciada
-        // Isso ajuda na cobertura de código
-        InvestmentHistory history = new InvestmentHistory();
-        assertNotNull(history);
-
-        // Testa setters e getters implícitos (campos públicos)
-        history.id = 1L;
-        history.tipo = "TIPO";
-        history.valor = 100.0;
-        history.rentabilidade = 0.05;
-        history.dataInvestimento = LocalDate.now();
-
-        assertEquals(1L, history.id);
-        assertEquals("TIPO", history.tipo);
-        assertEquals(100.0, history.valor);
-        assertEquals(0.05, history.rentabilidade);
-        assertNotNull(history.dataInvestimento);
-    }
-
-    @Test
-    void testLogicaDeStreamEMapeamento() {
-        // Testa a lógica de stream e mapeamento que seria usada no método real
-        LocalDate data1 = LocalDate.of(2024, 1, 15);
-        LocalDate data2 = LocalDate.of(2024, 1, 16);
-
-        InvestmentHistory history1 = new InvestmentHistory();
-        history1.id = 1L;
-        history1.tipo = "RENDA_FIXA";
-        history1.valor = 1000.0;
-        history1.rentabilidade = 0.1;
-        history1.dataInvestimento = data1;
-
-        InvestmentHistory history2 = new InvestmentHistory();
-        history2.id = 2L;
-        history2.tipo = "RENDA_VARIAVEL";
-        history2.valor = 2000.0;
-        history2.rentabilidade = 0.2;
-        history2.dataInvestimento = data2;
-
-        List<InvestmentHistory> histories = List.of(history1, history2);
-
-        // Simula a lógica do stream().map() do método original
-        List<InvestmentHistoryResponseDTO> result = histories.stream()
-                .map(this::mapearParaDTO)
-                .toList();
-
-        assertEquals(2, result.size());
-
-        InvestmentHistoryResponseDTO dto1 = result.get(0);
-        assertEquals(1L, dto1.id);
-        assertEquals("RENDA_FIXA", dto1.tipo);
-        assertEquals(1000.0, dto1.valor);
-        assertEquals(0.1, dto1.rentabilidade);
-        assertEquals(data1, dto1.data);
-
-        InvestmentHistoryResponseDTO dto2 = result.get(1);
-        assertEquals(2L, dto2.id);
-        assertEquals("RENDA_VARIAVEL", dto2.tipo);
-        assertEquals(2000.0, dto2.valor);
-        assertEquals(0.2, dto2.rentabilidade);
-        assertEquals(data2, dto2.data);
-    }
-
-    @Test
-    void testMapeamentoComValoresExtremos() {
-        // Testa mapeamento com valores extremos
-        InvestmentHistory history = new InvestmentHistory();
-        history.id = Long.MAX_VALUE;
-        history.tipo = "TIPO_MUITO_LONGO_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-        history.valor = Double.MAX_VALUE;
-        history.rentabilidade = Double.MIN_VALUE;
-        history.dataInvestimento = LocalDate.of(9999, 12, 31);
-
-        InvestmentHistoryResponseDTO dto = mapearParaDTO(history);
+        InvestmentHistoryResponseDTO dto = mapear(h);
 
         assertEquals(Long.MAX_VALUE, dto.id);
-        assertEquals("TIPO_MUITO_LONGO_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", dto.tipo);
         assertEquals(Double.MAX_VALUE, dto.valor);
         assertEquals(Double.MIN_VALUE, dto.rentabilidade);
-        assertEquals(LocalDate.of(9999, 12, 31), dto.data);
+        assertEquals(data, dto.data);
     }
 
-    // Método auxiliar que replica a lógica do método original
-    private InvestmentHistoryResponseDTO mapearParaDTO(InvestmentHistory history) {
-        InvestmentHistoryResponseDTO dto = new InvestmentHistoryResponseDTO();
-        dto.id = history.id;
-        dto.tipo = history.tipo;
-        dto.valor = history.valor;
-        dto.rentabilidade = history.rentabilidade;
-        dto.data = history.dataInvestimento;
-        return dto;
+    // ========================================================
+    // 3. TESTES DO MÉTODO REAL
+    // ========================================================
+
+    @Test
+    @DisplayName("historicoInvestimentos deve mapear corretamente")
+    void testHistoricoInvestimentos_MapeamentoReal() {
+        Long clienteId = 10L;
+        LocalDate data = LocalDate.of(2024, 1, 15);
+
+        InvestmentHistory h = new InvestmentHistory();
+        h.id = 1L;
+        h.tipo = "RF";
+        h.valor = 1500;
+        h.rentabilidade = 0.12;
+        h.dataInvestimento = data;
+
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(List.of(h));
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertEquals(1, result.size());
+        InvestmentHistoryResponseDTO dto = result.get(0);
+
+        assertEquals(1L, dto.id);
+        assertEquals("RF", dto.tipo);
+        assertEquals(1500, dto.valor);
+        assertEquals(0.12, dto.rentabilidade);
+        assertEquals(data, dto.data);
+
+        verify(investmentHistoryRepository, times(1))
+                .list("clienteId", clienteId);
     }
 
     @Test
-    void testCoberturaMetodoPrincipal() {
-        // Testa apenas que o método pode ser chamado sem erro de compilação
-        // Em um ambiente real, isso seria mockado adequadamente
-        InvestmentHistoryResource resource = new InvestmentHistoryResource();
+    @DisplayName("historicoInvestimentos deve retornar lista vazia")
+    void testHistoricoInvestimentos_ListaVazia() {
+        Long clienteId = 99L;
 
-        // Não executamos o método real para evitar o erro do Panache
-        // Mas garantimos que a classe e método existem
-        assertNotNull(resource);
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(List.of());
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Não deve falhar com clienteId negativo")
+    void testHistoricoInvestimentos_IdNegativo() {
+        Long clienteId = -1L;
+
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(List.of());
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Deve suportar grande volume de dados")
+    void testHistoricoInvestimentos_ListGrande() {
+        Long clienteId = 7L;
+
+        List<InvestmentHistory> grandeLista =
+                java.util.stream.IntStream.range(0, 500)
+                        .mapToObj(i -> {
+                            InvestmentHistory h = new InvestmentHistory();
+                            h.id = (long) i;
+                            h.tipo = "TIPO";
+                            h.valor = 100 + i;
+                            h.rentabilidade = 0.05;
+                            h.dataInvestimento = LocalDate.now();
+                            return h;
+                        }).toList();
+
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(grandeLista);
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertEquals(500, result.size());
+    }
+
+    @Test
+    @DisplayName("As informações do DTO não devem ser as mesmas instâncias do model")
+    void testHistoricoInvestimentos_IndependenciaObjetos() {
+        Long clienteId = 20L;
+
+        InvestmentHistory h = new InvestmentHistory();
+        h.id = 1L;
+        h.tipo = "X";
+        h.valor = 100;
+        h.rentabilidade = 0.10;
+        h.dataInvestimento = LocalDate.of(2024,1,1);
+
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(List.of(h));
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertNotSame(h, result.get(0));
+    }
+
+    @Test
+    @DisplayName("A ordem dos itens deve ser preservada")
+    void testOrdemPreservada() {
+        Long clienteId = 30L;
+
+        InvestmentHistory h1 = history(1L, "A", 100, 0.05, LocalDate.now());
+        InvestmentHistory h2 = history(2L, "B", 200, 0.10, LocalDate.now());
+
+        when(investmentHistoryRepository.list("clienteId", clienteId))
+                .thenReturn(List.of(h1, h2));
+
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+
+        assertEquals(1L, result.get(0).id);
+        assertEquals(2L, result.get(1).id);
+    }
+
+    // ========================================================
+    // Helpers
+    // ========================================================
+
+    private InvestmentHistory history(Long id, String tipo, double valor, double rentabilidade, LocalDate data) {
+        InvestmentHistory h = new InvestmentHistory();
+        h.id = id;
+        h.tipo = tipo;
+        h.valor = valor;
+        h.rentabilidade = rentabilidade;
+        h.dataInvestimento = data;
+        return h;
+    }
+
+    private InvestmentHistoryResponseDTO mapear(InvestmentHistory h) {
+        InvestmentHistoryResponseDTO dto = new InvestmentHistoryResponseDTO();
+        dto.id = h.id;
+        dto.tipo = h.tipo;
+        dto.valor = h.valor;
+        dto.rentabilidade = h.rentabilidade;
+        dto.data = h.dataInvestimento;
+        return dto;
     }
 }

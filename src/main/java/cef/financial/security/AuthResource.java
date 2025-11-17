@@ -27,10 +27,19 @@ public class AuthResource {
     @Inject
     TokenService tokenService;
 
+    // ✅ construtor padrão para CDI
+    public AuthResource() {
+    }
+
+    // ✅ construtor extra para testes unitários
+    public AuthResource(TokenService tokenService) {
+        this.tokenService = tokenService;
+    }
+
     @POST
     @Path("/login")
     @PermitAll
-    @SecurityRequirementsSet   // <- override da segurança global: aqui NÃO precisa JWT
+    @SecurityRequirementsSet   // override da segurança global: aqui NÃO precisa JWT
     @Operation(
             summary = "Autenticação do usuário",
             description = "Realiza o login e retorna um token JWT para ser usado nos demais endpoints."

@@ -22,6 +22,9 @@
         <!-- Plugins -->
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+
+        <!-- Versão do JaCoCo -->
+        <jacoco.version>0.8.12</jacoco.version>
     </properties>
 
     <!-- IMPORTA O BOM DO QUARKUS (não precisa pôr version nas deps do Quarkus) -->
@@ -108,6 +111,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Mocks para Panache (quarkus-panache-mock) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-panache-mock</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- RestAssured (se for testar endpoints HTTP com @QuarkusTest) -->
         <dependency>
             <groupId>io.rest-assured</groupId>
@@ -129,14 +139,6 @@
             <scope>test</scope>
         </dependency>
 
-
-
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Lombok (opcional) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -145,6 +147,8 @@
             <scope>provided</scope>
         </dependency>
     </dependencies>
+
+
 
     <!-- Só Maven Central, sem repositório quarkiverse separado -->
     <repositories>
@@ -183,12 +187,51 @@
                 </configuration>
             </plugin>
 
-            <!-- Testes -->
+            <!-- Testes (MODIFICADO) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
+
+                <configuration>
+                    <argLine>@{jacoco.agent.argLine}</argLine>
+                </configuration>
             </plugin>
+
+            <!-- INSERÇÃO DO JACOCO -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                        <configuration>
+                            <!--
+                              Usamos um nome de propriedade customizado para o agente
+                              para evitar conflitos com o Quarkus.
+                            -->
+                            <propertyName>jacoco.agent.argLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <!--
+                      2. Gera o relatório DEPOIS que os testes rodaram.
+                         A fase 'verify' é ideal, pois roda após a fase 'test'.
+                    -->
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 

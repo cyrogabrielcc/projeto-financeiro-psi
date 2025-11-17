@@ -114,19 +114,16 @@ public class DatabaseSeeder {
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
 
         Customer c1 = new Customer();
-        c1.rendaMensal = 5000.0;
         c1.perfil = "CONSERVADOR";
         c1.criadoEm = agora.minusMonths(6);
         customerRepository.persist(c1);
 
         Customer c2 = new Customer();
-        c2.rendaMensal = 12000.0;
         c2.perfil = "MODERADO";
         c2.criadoEm = agora.minusMonths(3);
         customerRepository.persist(c2);
 
         Customer c3 = new Customer();
-        c3.rendaMensal = 25000.0;
         c3.perfil = "ARROJADO";
         c3.criadoEm = agora.minusMonths(1);
         customerRepository.persist(c3);

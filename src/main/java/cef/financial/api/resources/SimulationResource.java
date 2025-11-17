@@ -23,11 +23,17 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated
-
 public class SimulationResource {
 
     @Inject
     InvestmentSimulationService simulationService;
+
+    public SimulationResource() {}
+
+    // construtor para testes
+    public SimulationResource(InvestmentSimulationService simulationService) {
+        this.simulationService = simulationService;
+    }
 
     @POST
     @Path("/simular-investimento")
@@ -37,36 +43,35 @@ public class SimulationResource {
         return Response.ok(response).build();
     }
 
-    // 2. GET /simulacoes
     @GET
     @Path("/simulacoes")
-    //@RolesAllowed({"user", "admin"})
     public List<SimulationHistoryResponseDTO> listarSimulacoes() {
-        return InvestmentSimulation.<InvestmentSimulation>listAll().stream()
-                .map(sim -> {
-                    SimulationHistoryResponseDTO dto = new SimulationHistoryResponseDTO();
-                    dto.id = sim.id;
-                    dto.clienteId = sim.clienteId;
-                    dto.produto = sim.produto.nome;
-                    dto.valorInvestido = sim.valorInvestido;
-                    dto.valorFinal = sim.valorFinal;
-                    dto.prazoMeses = sim.prazoMeses;
-                    dto.dataSimulacao = sim.dataSimulacao;
-                    return dto;
-                }).toList();
+
+        List<InvestmentSimulation> sims = simulationService.listAllSimulations();
+
+        return sims.stream().map(sim -> {
+            SimulationHistoryResponseDTO dto = new SimulationHistoryResponseDTO();
+            dto.id = sim.id;
+            dto.clienteId = sim.clienteId;
+            dto.produto = sim.produto.nome;
+            dto.valorInvestido = sim.valorInvestido;
+            dto.valorFinal = sim.valorFinal;
+            dto.prazoMeses = sim.prazoMeses;
+            dto.dataSimulacao = sim.dataSimulacao;
+            return dto;
+        }).toList();
     }
 
-    // 3. GET /simulacoes/por-produto-dia
     @GET
     @Path("/simulacoes/por-produto-dia")
-    //@RolesAllowed({"user", "admin"})
     public List<SimulationByProductDayResponseDTO> simulacoesPorProdutoDia() {
-        List<InvestmentSimulation> sims = InvestmentSimulation.listAll();
+
+        List<InvestmentSimulation> sims = simulationService.listAllSimulations();
 
         Map<String, Map<LocalDate, List<InvestmentSimulation>>> grouped =
                 sims.stream().collect(Collectors.groupingBy(
-                        sim -> sim.produto.nome,
-                        Collectors.groupingBy(sim -> sim.dataSimulacao.toLocalDate())
+                        s -> s.produto.nome,
+                        Collectors.groupingBy(s -> s.dataSimulacao.toLocalDate())
                 ));
 
         return grouped.entrySet().stream()
@@ -74,16 +79,17 @@ public class SimulationResource {
                         .map(entryDia -> {
                             String produto = entryProduto.getKey();
                             LocalDate dia = entryDia.getKey();
-                            List<InvestmentSimulation> list = entryDia.getValue();
+                            List<InvestmentSimulation> lista = entryDia.getValue();
 
                             SimulationByProductDayResponseDTO dto = new SimulationByProductDayResponseDTO();
                             dto.produto = produto;
                             dto.data = dia;
-                            dto.quantidadeSimulacoes = list.size();
-                            dto.mediaValorFinal = list.stream()
-                                    .mapToDouble(sim -> sim.valorFinal)
+                            dto.quantidadeSimulacoes = lista.size();
+                            dto.mediaValorFinal = lista.stream()
+                                    .mapToDouble(s -> s.valorFinal)
                                     .average()
                                     .orElse(0.0);
+
                             return dto;
                         })
                 ).toList();

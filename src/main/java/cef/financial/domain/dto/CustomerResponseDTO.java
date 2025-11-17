@@ -8,7 +8,6 @@ public class CustomerResponseDTO {
     public String perfil;
     public OffsetDateTime criadoEm;
 
-    // Construtor vazio para o Jackson
     public CustomerResponseDTO() {}
 
     public CustomerResponseDTO(Long id, String perfil, OffsetDateTime criadoEm) {

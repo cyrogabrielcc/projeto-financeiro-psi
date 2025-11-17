@@ -2,7 +2,9 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
+import cef.financial.domain.repository.InvestmentHistoryRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
@@ -10,11 +12,14 @@ import java.util.List;
 @ApplicationScoped
 public class RiskProfileService {
 
+    @Inject
+    InvestmentHistoryRepository historyRepository;
+
     @Transactional
     public RiskProfileResponseDTO calculateProfile(Long clienteId) {
 
         List<InvestmentHistory> history =
-                InvestmentHistory.list("clienteId", clienteId);
+                historyRepository.list("clienteId", clienteId);
 
         // Sempre 200, mas com perfil "Indefinido" quando não há histórico
         if (history == null || history.isEmpty()) {
@@ -32,7 +37,7 @@ public class RiskProfileService {
         int maxRiskLevel = 0; // 1 = baixo, 2 = médio, 3 = alto
 
         for (InvestmentHistory h : history) {
-            double valor = h.valor;           // assumindo primitivo; se for Double, proteja de null
+            double valor = h.valor;           // se for Double, trate null conforme necessário
             double rentabilidade = h.rentabilidade;
 
             totalValor += valor;
@@ -101,8 +106,6 @@ public class RiskProfileService {
 
         double rawScore = returnScore + riskExposureScore + experienceScore;
 
-        // Ajuste extra: se tem pouquíssimas operações e já pegou ativo muito arriscado,
-        // evita jogar direto para "super agressivo"
         if (qtdOperacoes < 3 && maxRiskLevel == 3) {
             rawScore -= 10;
         }
@@ -132,10 +135,6 @@ public class RiskProfileService {
         return response;
     }
 
-    /**
-     * Mapeia o tipo de investimento para um nível de risco:
-     * 1 = baixo, 2 = médio, 3 = alto.
-     */
     private int deriveRiskLevel(String tipo) {
         if (tipo == null) {
             return 1; // assume baixo se não souber
@@ -156,7 +155,6 @@ public class RiskProfileService {
             return 2;
         }
 
-        // Baixo risco: renda fixa, CDB, LCI, LCA, tesouro etc.
         if (t.contains("cdb")
                 || t.contains("lci")
                 || t.contains("lca")
