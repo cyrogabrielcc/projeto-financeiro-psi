@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ResourcesTest; // Ajuste para o seu pacote
+package cef.invest.ResourcesTest; // Ajuste para o seu pacote
 
 import cef.financial.api.resources.TelemetryResource;
 import cef.financial.domain.dto.TelemetryResponseDTO;

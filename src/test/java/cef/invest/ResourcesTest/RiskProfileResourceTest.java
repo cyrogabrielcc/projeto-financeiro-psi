@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ResourcesTest;
+package cef.invest.ResourcesTest;
 
 import cef.financial.api.resources.RiskProfileResource;
 import cef.financial.domain.dto.RiskProfileResponseDTO;

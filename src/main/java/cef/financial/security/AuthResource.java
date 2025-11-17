@@ -15,23 +15,26 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
-import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirementsSet;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.Set;
 
 @Path("/auth")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@Tag(
+        name = "Autenticação",                      // 🔥 força esse grupo a ser o primeiro
+        description = "Endpoint de login e geração de token JWT"
+)
+@SecurityRequirement(name = "none")                // explícito para remover exigência de JWT
 public class AuthResource {
 
     @Inject
     TokenService tokenService;
 
-    // ✅ construtor padrão para CDI
-    public AuthResource() {
-    }
+    public AuthResource() {}
 
-    // ✅ construtor extra para testes unitários
     public AuthResource(TokenService tokenService) {
         this.tokenService = tokenService;
     }
@@ -39,10 +42,9 @@ public class AuthResource {
     @POST
     @Path("/login")
     @PermitAll
-    @SecurityRequirementsSet   // override da segurança global: aqui NÃO precisa JWT
     @Operation(
-            summary = "Autenticação do usuário",
-            description = "Realiza o login e retorna um token JWT para ser usado nos demais endpoints."
+            summary = "Autenticar usuário e gerar token JWT",
+            description = "Recebe credenciais de login e retorna um token JWT válido para acessar os demais endpoints."
     )
     @APIResponses({
             @APIResponse(
@@ -55,7 +57,7 @@ public class AuthResource {
             ),
             @APIResponse(
                     responseCode = "400",
-                    description = "Requisição inválida (faltando username ou password)"
+                    description = "Requisição inválida: campos obrigatórios ausentes"
             ),
             @APIResponse(
                     responseCode = "401",
@@ -65,7 +67,7 @@ public class AuthResource {
     public Response login(
             @RequestBody(
                     required = true,
-                    description = "Credenciais do usuário",
+                    description = "Credenciais do usuário para autenticação",
                     content = @Content(
                             schema = @Schema(implementation = LoginRequest.class)
                     )
@@ -76,7 +78,7 @@ public class AuthResource {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
 
-        // ADMIN
+        // ADMIN login
         if ("admin".equals(request.username) && "admin123".equals(request.password)) {
             String token = tokenService.generateToken(
                     request.username,
@@ -85,7 +87,7 @@ public class AuthResource {
             return Response.ok(new LoginResponse(token)).build();
         }
 
-        // USER
+        // USER login
         if ("user".equals(request.username) && "user123".equals(request.password)) {
             String token = tokenService.generateToken(
                     request.username,
@@ -94,7 +96,8 @@ public class AuthResource {
             return Response.ok(new LoginResponse(token)).build();
         }
 
-        // Credenciais inválidas
+
+        // Falha de autenticação
         return Response.status(Response.Status.UNAUTHORIZED).build();
     }
 }

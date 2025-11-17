@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ServiceTest;
+package cef.invest.ServiceTest;
 
 import cef.financial.domain.dto.TelemetryResponseDTO;
 import cef.financial.domain.model.TelemetryEvent;

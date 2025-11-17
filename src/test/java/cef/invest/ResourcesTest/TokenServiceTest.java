@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ResourcesTest;
+package cef.invest.ResourcesTest;
 
 import cef.financial.security.TokenService;
 import org.junit.jupiter.api.Test;

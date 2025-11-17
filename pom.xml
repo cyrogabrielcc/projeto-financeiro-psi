@@ -73,8 +73,6 @@
             <artifactId>quarkus-agroal</artifactId>
         </dependency>
 
-
-        <!-- SQLite (via Quarkiverse, mas publicado no Maven Central) -->
         <!-- Driver JDBC SQL Server -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -103,7 +101,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Testes -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -148,8 +150,6 @@
         </dependency>
     </dependencies>
 
-
-
     <!-- Só Maven Central, sem repositório quarkiverse separado -->
     <repositories>
         <repository>
@@ -187,41 +187,49 @@
                 </configuration>
             </plugin>
 
-            <!-- Testes (MODIFICADO) -->
+            <!-- Testes -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
-
                 <configuration>
                     <argLine>@{jacoco.agent.argLine}</argLine>
                 </configuration>
             </plugin>
 
-            <!-- INSERÇÃO DO JACOCO -->
+            <!-- JaCoCo -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
-                <executions>
 
+                <!-- Exclui classes/pacotes do cálculo de cobertura -->
+                <configuration>
+                    <excludes>
+                        <!-- diretório de repositórios -->
+                        <exclude>cef/financial/domain/repository/**</exclude>
+
+                        <!-- classes específicas -->
+                        <exclude>cef/financial/security/LoginRequest.class</exclude>
+                        <exclude>cef/financial/infra/DatabaseInitializer.class</exclude>
+                        <exclude>cef/financial/infra/DatabaseSeeder.class</exclude>
+                        <exclude>cef/financial/config/OpenApiConfig.java</exclude>
+
+                        <exclude>cef/financial/Main.class</exclude>
+                    </excludes>
+                </configuration>
+
+                <executions>
                     <execution>
                         <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                         <configuration>
-                            <!--
-                              Usamos um nome de propriedade customizado para o agente
-                              para evitar conflitos com o Quarkus.
-                            -->
                             <propertyName>jacoco.agent.argLine</propertyName>
                         </configuration>
                     </execution>
-                    <!--
-                      2. Gera o relatório DEPOIS que os testes rodaram.
-                         A fase 'verify' é ideal, pois roda após a fase 'test'.
-                    -->
+
                     <execution>
                         <id>report</id>
                         <phase>verify</phase>

@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ResourcesTest;
+package cef.invest.ResourcesTest;
 
 import cef.financial.domain.service.TelemetryService;
 import cef.financial.infra.TelemetryFilter;

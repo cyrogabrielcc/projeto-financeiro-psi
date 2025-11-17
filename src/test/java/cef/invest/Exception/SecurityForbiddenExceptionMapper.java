@@ -1,6 +1,6 @@
-package cef.financial.ErrorMessage.AuthErrorMessage;
+package cef.invest.Exception;
 
-import cef.financial.ErrorMessage.ErrorResponse;
+import cef.financial.domain.exception.ErrorResponse;
 import io.quarkus.security.ForbiddenException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
@@ -17,7 +17,7 @@ public class SecurityForbiddenExceptionMapper implements ExceptionMapper<Forbidd
     @Override
     public Response toResponse(ForbiddenException exception) {
 
-        String path = uriInfo != null ? uriInfo.getPath() : null;
+        String path = resolvePathSafely();
 
         ErrorResponse body = new ErrorResponse(
                 Response.Status.FORBIDDEN.getStatusCode(),
@@ -30,5 +30,21 @@ public class SecurityForbiddenExceptionMapper implements ExceptionMapper<Forbidd
                 .status(Response.Status.FORBIDDEN)
                 .entity(body)
                 .build();
+    }
+
+    /**
+     * Tenta obter o path da requisição atual.
+     * Em testes (sem request ativa), evita IllegalStateException e retorna null.
+     */
+    private String resolvePathSafely() {
+        if (uriInfo == null) {
+            return null;
+        }
+        try {
+            return uriInfo.getPath();
+        } catch (IllegalStateException e) {
+            // Sem request em andamento (ex: testes unitários)
+            return null;
+        }
     }
 }

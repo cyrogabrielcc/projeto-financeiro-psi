@@ -9,22 +9,28 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+
 import java.util.List;
 
 @Path("/investimentos")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Investimentos", description = "Consulta de histórico de investimentos de clientes")
 public class InvestmentHistoryResource {
 
     @Inject
     InvestmentHistoryRepository investmentHistoryRepository;
 
-    // construtor padrão para CDI
-    public InvestmentHistoryResource() {
-    }
+    public InvestmentHistoryResource() {}
 
-    // construtor para testes unitários
     public InvestmentHistoryResource(InvestmentHistoryRepository investmentHistoryRepository) {
         this.investmentHistoryRepository = investmentHistoryRepository;
     }
@@ -32,8 +38,28 @@ public class InvestmentHistoryResource {
     @GET
     @Path("/{clienteId}")
     @RolesAllowed({"user", "admin"})
+    @Operation(
+            summary = "Consultar histórico de investimentos",
+            description = "Retorna o histórico completo de investimentos associados ao cliente informado."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Histórico retornado com sucesso",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = InvestmentHistoryResponseDTO.class)
+            )
+    )
+    @APIResponse(
+            responseCode = "404",
+            description = "Cliente não possui histórico ou não foi encontrado"
+    )
+    @APIResponse(
+            responseCode = "403",
+            description = "Acesso negado — usuário não possui permissão para consultar"
+    )
     public List<InvestmentHistoryResponseDTO> historicoInvestimentos(@PathParam("clienteId") Long clienteId) {
-        // antes: InvestmentHistory.list("clienteId", clienteId);
+
         List<InvestmentHistory> history = investmentHistoryRepository.list("clienteId", clienteId);
 
         return history.stream().map(h -> {

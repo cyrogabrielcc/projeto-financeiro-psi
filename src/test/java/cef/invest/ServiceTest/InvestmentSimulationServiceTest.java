@@ -1,4 +1,4 @@
-package cef.invest.resources.test.ServiceTest; // Ajuste para o seu pacote
+package cef.invest.ServiceTest; // Ajuste para o seu pacote
 
 import cef.financial.domain.dto.InvestmentSimulationRequestDTO;
 import cef.financial.domain.dto.InvestmentSimulationResponseDTO;
