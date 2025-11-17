@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "investment_simulation")
+@Table(name = "HTE_INVESTMENT_SIMULATION")
 public class InvestmentSimulation extends PanacheEntity {
 
     @Column(nullable = false)

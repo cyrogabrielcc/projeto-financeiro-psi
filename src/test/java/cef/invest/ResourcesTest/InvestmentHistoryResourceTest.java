@@ -2,12 +2,14 @@ package cef.invest.ResourcesTest;
 
 import cef.financial.api.resources.InvestmentHistoryResource;
 import cef.financial.domain.dto.InvestmentHistoryResponseDTO;
+import cef.financial.domain.exception.ApiError;
 import cef.financial.domain.model.InvestmentHistory;
 import cef.financial.domain.repository.InvestmentHistoryRepository;
 import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,7 +74,7 @@ class InvestmentHistoryResourceTest {
     }
 
     // ========================================================
-    // 2. TESTES DE MAPEAMENTO
+    // 2. TESTES DE MAPEAMENTO (helpers puros)
     // ========================================================
 
     @Test
@@ -130,11 +132,11 @@ class InvestmentHistoryResourceTest {
     }
 
     // ========================================================
-    // 3. TESTES DO MÉTODO REAL
+    // 3. TESTES DO MÉTODO historicoInvestimentos
     // ========================================================
 
     @Test
-    @DisplayName("historicoInvestimentos deve mapear corretamente")
+    @DisplayName("historicoInvestimentos deve mapear corretamente e retornar lista com 1 item")
     void testHistoricoInvestimentos_MapeamentoReal() {
         Long clienteId = 10L;
         LocalDate data = LocalDate.of(2024, 1, 15);
@@ -165,34 +167,47 @@ class InvestmentHistoryResourceTest {
     }
 
     @Test
-    @DisplayName("historicoInvestimentos deve retornar lista vazia")
+    @DisplayName("historicoInvestimentos deve retornar 404 e ApiError quando lista vazia")
     void testHistoricoInvestimentos_ListaVazia() {
         Long clienteId = 99L;
 
         when(investmentHistoryRepository.list("clienteId", clienteId))
                 .thenReturn(List.of());
 
-        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+        WebApplicationException ex = assertThrows(
+                WebApplicationException.class,
+                () -> resource.historicoInvestimentos(clienteId)
+        );
 
-        assertTrue(result.isEmpty());
+        Response response = ex.getResponse();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertTrue(response.getEntity() instanceof ApiError);
+
+        ApiError error = (ApiError) response.getEntity();
+        assertEquals("HISTORICO_NAO_ENCONTRADO", error.code);
+        assertTrue(error.message.contains(clienteId.toString()));
     }
 
     @Test
-    @DisplayName("Não deve falhar com clienteId negativo")
+    @DisplayName("historicoInvestimentos com clienteId negativo deve retornar 404 e ApiError")
     void testHistoricoInvestimentos_IdNegativo() {
         Long clienteId = -1L;
 
         when(investmentHistoryRepository.list("clienteId", clienteId))
                 .thenReturn(List.of());
 
-        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
+        WebApplicationException ex = assertThrows(
+                WebApplicationException.class,
+                () -> resource.historicoInvestimentos(clienteId)
+        );
 
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        Response response = ex.getResponse();
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertTrue(response.getEntity() instanceof ApiError);
     }
 
     @Test
-    @DisplayName("Deve suportar grande volume de dados")
+    @DisplayName("Deve suportar grande volume de dados e retornar lista com 500 itens")
     void testHistoricoInvestimentos_ListGrande() {
         Long clienteId = 7L;
 
@@ -233,7 +248,17 @@ class InvestmentHistoryResourceTest {
 
         List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
 
-        assertNotSame(h, result.get(0));
+        assertEquals(1, result.size());
+        InvestmentHistoryResponseDTO dto = result.get(0);
+
+        // verifica que não é a mesma instância
+        assertNotSame(h, dto);
+        // e que os dados foram copiados corretamente
+        assertEquals(h.id, dto.id);
+        assertEquals(h.tipo, dto.tipo);
+        assertEquals(h.valor, dto.valor);
+        assertEquals(h.rentabilidade, dto.rentabilidade);
+        assertEquals(h.dataInvestimento, dto.data);
     }
 
     @Test
@@ -249,12 +274,13 @@ class InvestmentHistoryResourceTest {
 
         List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
 
+        assertEquals(2, result.size());
         assertEquals(1L, result.get(0).id);
         assertEquals(2L, result.get(1).id);
     }
 
     // ========================================================
-    // Helpers
+    // HELPERS
     // ========================================================
 
     private InvestmentHistory history(Long id, String tipo, double valor, double rentabilidade, LocalDate data) {

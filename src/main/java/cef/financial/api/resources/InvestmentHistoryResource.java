@@ -8,13 +8,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-
-import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
-import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.jboss.logging.Logger;
 
 import java.util.List;
 
@@ -22,9 +16,9 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Authenticated
-@SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Investimentos", description = "Consulta de histórico de investimentos de clientes")
 public class InvestmentHistoryResource {
+
+    private static final Logger LOG = Logger.getLogger(InvestmentHistoryResource.class);
 
     @Inject
     InvestmentHistoryRepository investmentHistoryRepository;
@@ -38,29 +32,15 @@ public class InvestmentHistoryResource {
     @GET
     @Path("/{clienteId}")
     @RolesAllowed({"user", "admin"})
-    @Operation(
-            summary = "Consultar histórico de investimentos",
-            description = "Retorna o histórico completo de investimentos associados ao cliente informado."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Histórico retornado com sucesso",
-            content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = InvestmentHistoryResponseDTO.class)
-            )
-    )
-    @APIResponse(
-            responseCode = "404",
-            description = "Cliente não possui histórico ou não foi encontrado"
-    )
-    @APIResponse(
-            responseCode = "403",
-            description = "Acesso negado — usuário não possui permissão para consultar"
-    )
     public List<InvestmentHistoryResponseDTO> historicoInvestimentos(@PathParam("clienteId") Long clienteId) {
 
-        List<InvestmentHistory> history = investmentHistoryRepository.list("clienteId", clienteId);
+        List<InvestmentHistory> history =
+                investmentHistoryRepository.list("clienteId", clienteId);
+
+        if (history == null || history.isEmpty()) {
+            LOG.infof("Cliente %d não possui histórico de investimentos. Retornando lista vazia.", clienteId);
+            return List.of();
+        }
 
         return history.stream().map(h -> {
             InvestmentHistoryResponseDTO dto = new InvestmentHistoryResponseDTO();

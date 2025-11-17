@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "telemetry_event")
+@Table(name = "HTE_TELEMETRY_EVENT")
 public class TelemetryEvent extends PanacheEntity {
 
     @Column(nullable = false)

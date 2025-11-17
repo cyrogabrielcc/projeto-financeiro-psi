@@ -114,7 +114,7 @@ public class DatabaseInitializer {
         try (ResultSet rs = st.executeQuery("""
                 SELECT 1
                 FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_NAME = 'investment_simulation'
+                WHERE TABLE_NAME = 'HTE_INVESTMENT_SIMULATION'
                 """)) {
             if (rs.next()) {
                 exists = true;
@@ -122,14 +122,14 @@ public class DatabaseInitializer {
         }
 
         if (exists) {
-            LOG.info("Tabela investment_simulation já existe. Nenhuma ação necessária.");
+            LOG.info("Tabela HTE_INVESTMENT_SIMULATION já existe. Nenhuma ação necessária.");
             return;
         }
 
-        LOG.warn("Tabela investment_simulation NÃO encontrada. Criando tabela...");
+        LOG.warn("Tabela HTE_INVESTMENT_SIMULATION NÃO encontrada. Criando tabela...");
 
         String createTableSql = """
-                CREATE TABLE investment_simulation (
+                CREATE TABLE HTE_INVESTMENT_SIMULATION (
                     id              BIGINT IDENTITY(1,1) PRIMARY KEY,
                     clienteId       BIGINT         NOT NULL,
                     produto_id      BIGINT         NOT NULL,
@@ -141,6 +141,6 @@ public class DatabaseInitializer {
                 """;
 
         st.executeUpdate(createTableSql);
-        LOG.info("Tabela investment_simulation criada com sucesso.");
+        LOG.info("Tabela HTE_INVESTMENT_SIMULATION criada com sucesso.");
     }
 }

@@ -43,9 +43,9 @@ public class InvestmentSimulationService {
             // 1) validação básica
             validarRequest(request);
 
-            // 1.1) garante que o cliente exista (ou cria) e obtem o ID real
+            // 1.1) garante que o cliente exista (ou cria) e obtém o ID real
             Customer cliente = obterOuCriarCliente(request.clienteId);
-            Long clienteIdReal = cliente.id;
+            Long clienteIdReal = cliente.id; // aqui será igual ao request.clienteId
 
             // 2) escolhe/valida produto com base nas regras
             InvestmentProduct product = escolherProdutoElegivel(request);
@@ -63,7 +63,7 @@ public class InvestmentSimulationService {
 
             // 5) persistência da simulação
             InvestmentSimulation sim = new InvestmentSimulation();
-            sim.clienteId = clienteIdReal;   // <<< usa o ID real do cliente
+            sim.clienteId = clienteIdReal;   // <<< usa o ID real do cliente (igual ao request)
             sim.produto = product;
             sim.valorInvestido = request.valor;
             sim.valorFinal = valorFinal;
@@ -102,7 +102,7 @@ public class InvestmentSimulationService {
     }
 
     // ============================================================
-    // Cliente: obter ou criar
+    // Cliente: obter ou criar (usando ID da requisição)
     // ============================================================
     private Customer obterOuCriarCliente(Long clienteIdRequest) {
         // Primeiro tenta achar um cliente com esse ID
@@ -112,14 +112,14 @@ public class InvestmentSimulationService {
             return existente;
         }
 
-        // Se não encontrou, cria um novo cliente "básico"
+        // Se não encontrou, cria um novo cliente usando o ID da requisição
         Customer novo = new Customer();
+        novo.id = clienteIdRequest;  // <<< AQUI: ID manual
         novo.perfil = "INDEFINIDO";
         novo.criadoEm = OffsetDateTime.now(ZoneOffset.UTC);
 
         customerRepository.persist(novo);
-        LOG.infof("Cliente novo criado automaticamente. ID solicitado=%d, ID gerado=%d",
-                clienteIdRequest, novo.id);
+        LOG.infof("Cliente novo criado automaticamente com ID da requisição. ID=%d", novo.id);
 
         return novo;
     }
@@ -166,7 +166,7 @@ public class InvestmentSimulationService {
     }
 
     // ============================================================
-    // Escolha / validação de produto  (igual ao seu)
+    // Escolha / validação de produto
     // ============================================================
     private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request) {
         if (request.produtoId != null && request.produtoId > 0) {

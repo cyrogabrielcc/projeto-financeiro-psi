@@ -56,7 +56,6 @@ public class Main {
             }
 
         } catch (Exception e) {
-            // ⚠️ IMPORTANTE: NÃO MATAR A APLICAÇÃO
             LOG.error("Não foi possível garantir a existência do banco investments. " +
                     "Verifique se o SQL Server está rodando e se o usuário/senha estão corretos.", e);
             // Se falhar aqui, o Quarkus ainda vai tentar subir.

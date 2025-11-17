@@ -33,7 +33,6 @@ public class DatabaseSeeder {
     @Inject
     InvestmentSimulationRepository simulationRepository;
 
-    // Chamado automaticamente quando o Quarkus sobe
     void onStart(@Observes StartupEvent ev) {
         seed();
     }
@@ -43,7 +42,7 @@ public class DatabaseSeeder {
         seedProducts();
         seedCustomers();
         seedSimulations();
-        seedInvestmentHistory(); // <<< NOVO
+        seedInvestmentHistory();
     }
 
     // ================== PRODUTOS ==================
@@ -104,42 +103,37 @@ public class DatabaseSeeder {
     private void seedCustomers() {
         long customerCount = customerRepository.count();
 
-        if (customerCount > 0) {
-            LOG.infof("DatabaseSeeder: já existem %d clientes cadastrados. Seed de clientes ignorado.", customerCount);
+        // Em vez de ignorar sempre, garantimos que existam pelo menos 13
+        if (customerCount >= 13) {
+            LOG.infof("DatabaseSeeder: já existem %d clientes cadastrados. Nenhum novo cliente será criado.", customerCount);
             return;
         }
 
-        LOG.info("DatabaseSeeder: nenhum cliente encontrado. Populando clientes de teste...");
+        LOG.infof("DatabaseSeeder: existem %d clientes. Criando até 13...", customerCount);
 
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
 
-        Customer c1 = new Customer();
-        c1.perfil = "CONSERVADOR";
-        c1.criadoEm = agora.minusMonths(6);
-        customerRepository.persist(c1);
+        // Começa do próximo id disponível até 13
+        long startId = customerCount + 1;
+        if (startId < 1L) startId = 1L; // segurança
 
-        Customer c2 = new Customer();
-        c2.perfil = "MODERADO";
-        c2.criadoEm = agora.minusMonths(3);
-        customerRepository.persist(c2);
+        for (long id = startId; id <= 13L; id++) {
+            Customer c = new Customer();
+            c.id = id;  // ID MANUAL
+            c.perfil = switch ((int) (id % 3)) {
+                case 1 -> "CONSERVADOR";
+                case 2 -> "MODERADO";
+                default -> "ARROJADO";
+            };
+            c.criadoEm = agora.minusDays(id * 2);
+            customerRepository.persist(c);
+        }
 
-        Customer c3 = new Customer();
-        c3.perfil = "ARROJADO";
-        c3.criadoEm = agora.minusMonths(1);
-        customerRepository.persist(c3);
-
-        LOG.infof("DatabaseSeeder: inseridos %d clientes de teste.", customerRepository.count());
+        LOG.infof("DatabaseSeeder: agora existem %d clientes cadastrados.", customerRepository.count());
     }
 
     // ================== SIMULAÇÕES ==================
     private void seedSimulations() {
-        long simCount = simulationRepository.count();
-
-        if (simCount > 0) {
-            LOG.infof("DatabaseSeeder: já existem %d simulações cadastradas. Seed de simulações ignorado.", simCount);
-            return;
-        }
-
         List<Customer> customers = customerRepository.listAll();
         List<InvestmentProduct> products = productRepository.listAll();
 
@@ -148,39 +142,39 @@ public class DatabaseSeeder {
             return;
         }
 
-        LOG.info("DatabaseSeeder: criando simulações de teste...");
+        LOG.info("DatabaseSeeder: garantindo 10 simulações para cada cliente...");
 
         OffsetDateTime agora = OffsetDateTime.now(ZoneOffset.UTC);
+        int totalCriadas = 0;
 
-        double[] valoresBase = { 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 20000.0 };
-        int[] prazosMeses   = { 3,    6,     12,     18,     24,      36      };
+        for (Customer customer : customers) {
+            // conta quantas simulações esse cliente já tem
+            long existentes = simulationRepository.count("clienteId", customer.id);
 
-        int criadas = 0;
+            if (existentes >= 10) {
+                LOG.debug("Cliente " + customer.id + " já possui " + existentes + " simulações. Nenhuma nova será criada.");
+                continue;
+            }
 
-        for (int i = 0; i < customers.size(); i++) {
-            Customer customer = customers.get(i);
+            // cria até completar 10
+            for (int i = (int) existentes + 1; i <= 10; i++) {
 
-            for (int j = 0; j < products.size(); j++) {
-                InvestmentProduct product = products.get(j);
+                InvestmentProduct product =
+                        products.get((int) ((customer.id + i) % products.size()));
 
-                for (int k = 0; k < valoresBase.length; k++) {
-                    double valor = valoresBase[k]
-                            + (i * 700.0)
-                            + (j * 400.0);
+                double valorBase = 1000.0 + (customer.id * 100.0) + (i * 50.0);
+                int prazoMeses = 6 + (i % 12); // entre 7 e 17 meses
 
-                    int prazo = prazosMeses[k];
+                OffsetDateTime dataSimulacao =
+                        agora.minusDays(customer.id * 2 + i);
 
-                    long diasAtras = (long) (i * 10 + j * 5 + k + 1);
-                    OffsetDateTime dataSimulacao = agora.minusDays(diasAtras);
-
-                    createSimulation(customer, product, valor, prazo, dataSimulacao);
-                    criadas++;
-                }
+                createSimulation(customer, product, valorBase, prazoMeses, dataSimulacao);
+                totalCriadas++;
             }
         }
 
-        LOG.infof("DatabaseSeeder: criadas %d simulações de teste. Total na base: %d",
-                criadas, simulationRepository.count());
+        LOG.infof("DatabaseSeeder: criadas %d novas simulações. Total na base: %d",
+                totalCriadas, simulationRepository.count());
     }
 
     private void createSimulation(Customer customer,
@@ -221,10 +215,9 @@ public class DatabaseSeeder {
 
         LOG.info("DatabaseSeeder: criando histórico de investimentos de teste...");
 
-        Customer c1 = customers.get(0); // normalmente será id = 1 em base limpa
+        Customer c1 = customers.get(0);
         Customer c2 = customers.size() > 1 ? customers.get(1) : c1;
 
-        // Registro 1 – deve bater com o exemplo do response
         InvestmentHistory h1 = new InvestmentHistory();
         h1.clienteId = c1.id;
         h1.tipo = "CDB";
@@ -233,7 +226,6 @@ public class DatabaseSeeder {
         h1.dataInvestimento = LocalDate.of(2025, 1, 15);
         h1.persist();
 
-        // Registro 2 – também para o mesmo cliente
         InvestmentHistory h2 = new InvestmentHistory();
         h2.clienteId = c1.id;
         h2.tipo = "Fundo Multimercado";
@@ -242,7 +234,6 @@ public class DatabaseSeeder {
         h2.dataInvestimento = LocalDate.of(2025, 3, 10);
         h2.persist();
 
-        // Alguns registros extras para outro cliente
         InvestmentHistory h3 = new InvestmentHistory();
         h3.clienteId = c2.id;
         h3.tipo = "Tesouro Selic";
@@ -258,6 +249,8 @@ public class DatabaseSeeder {
         h4.rentabilidade = 0.11;
         h4.dataInvestimento = LocalDate.of(2025, 2, 5);
         h4.persist();
+
+
 
         LOG.infof("DatabaseSeeder: criados %d registros de histórico de investimentos.", InvestmentHistory.count());
     }

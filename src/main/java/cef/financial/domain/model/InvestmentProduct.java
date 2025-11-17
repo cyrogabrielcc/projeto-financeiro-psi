@@ -6,7 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "investment_product")
+@Table(name = "HTE_INVESTMENT_PRODUCT")
 public class InvestmentProduct extends PanacheEntity {
 
     @Column(nullable = false)
