@@ -1,31 +1,27 @@
 package cef.invest.Integrados;
 
-import io.quarkus.security.ForbiddenException;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.Path;
 
 @Path("/it-exceptions")
 public class TestExceptionResource {
 
     @GET
+    @Path("/generic")
+    public void generic() {
+        // NÃO retorna Response, precisa JOGAR exceção
+        throw new RuntimeException("Erro genérico para testar GenericExceptionMapper");
+    }
+
+    @GET
     @Path("/forbidden")
     public void forbidden() {
-        // Vai cair no SecurityForbiddenExceptionMapper
-        throw new ForbiddenException("Sem permissão");
+        throw new jakarta.ws.rs.ForbiddenException("Acesso negado (simulação de 403)");
     }
 
     @GET
     @Path("/unauthorized")
     public void unauthorized() {
-        // Vai cair no SecurityUnauthorizedExceptionMapper
-        throw new NotAuthorizedException("Bearer");
-    }
-
-    @GET
-    @Path("/generic")
-    public void generic() {
-        // Deve cair no GenericExceptionMapper
-        throw new RuntimeException("Erro inesperado");
+        throw new jakarta.ws.rs.NotAuthorizedException("Bearer");
     }
 }

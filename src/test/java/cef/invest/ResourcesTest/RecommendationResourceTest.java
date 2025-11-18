@@ -7,8 +7,11 @@ import cef.financial.domain.service.RecommendationService;
 import io.quarkus.security.Authenticated;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Testes unitários para RecommendationResource com 100% de cobertura
+ * Testes unitários para RecommendationResource
  */
 @ExtendWith(MockitoExtension.class)
 class RecommendationResourceTest {
@@ -41,6 +44,9 @@ class RecommendationResourceTest {
         assertEquals("/produtos-recomendados", RecommendationResource.class.getAnnotation(Path.class).value());
 
         assertTrue(RecommendationResource.class.isAnnotationPresent(Produces.class));
+        assertEquals(MediaType.APPLICATION_JSON,
+                RecommendationResource.class.getAnnotation(Produces.class).value()[0]);
+
         assertTrue(RecommendationResource.class.isAnnotationPresent(Authenticated.class));
     }
 
@@ -65,24 +71,64 @@ class RecommendationResourceTest {
         assertEquals("/{perfil}", method.getAnnotation(Path.class).value());
     }
 
+    // ===================== COMPORTAMENTO QUANDO LISTA VAZIA => NotFoundException =====================
+
     @Test
-    void produtosRecomendados_deveRetornarListaVaziaQuandoServicoRetornaVazio() {
-        // Arrange
+    void produtosRecomendados_deveLancar404_QuandoServicoRetornaVazio() {
         String perfil = "CONSERVADOR";
         when(recommendationService.recommendByProfile(perfil)).thenReturn(Collections.emptyList());
 
-        // Act
-        List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados(perfil);
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> recommendationResource.produtosRecomendados(perfil)
+        );
 
-        // Assert
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        assertTrue(ex.getMessage().contains("CONSERSADOR") || ex.getMessage().contains("CONSERVADOR"));
         verify(recommendationService).recommendByProfile(perfil);
     }
 
     @Test
+    void produtosRecomendados_deveLancar404_QuandoPerfilForNulo() {
+        when(recommendationService.recommendByProfile(null)).thenReturn(Collections.emptyList());
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> recommendationResource.produtosRecomendados(null)
+        );
+
+        assertTrue(ex.getMessage().contains("null"));
+        verify(recommendationService).recommendByProfile(null);
+    }
+
+    @Test
+    void produtosRecomendados_deveLancar404_QuandoPerfilForVazio() {
+        when(recommendationService.recommendByProfile("")).thenReturn(Collections.emptyList());
+
+        NotFoundException ex = assertThrows(
+                NotFoundException.class,
+                () -> recommendationResource.produtosRecomendados("")
+        );
+
+        assertTrue(ex.getMessage().contains("perfil"));
+        verify(recommendationService).recommendByProfile("");
+    }
+
+    @Test
+    void produtosRecomendados_deveChamarServicoCorretamente_quandoNaoHaProdutos() {
+        String perfil = "MODERADO";
+        when(recommendationService.recommendByProfile(perfil)).thenReturn(Collections.emptyList());
+
+        assertThrows(NotFoundException.class,
+                () -> recommendationResource.produtosRecomendados(perfil));
+
+        verify(recommendationService, times(1)).recommendByProfile(perfil);
+        verifyNoMoreInteractions(recommendationService);
+    }
+
+    // ===================== COMPORTAMENTO QUANDO EXISTEM PRODUTOS =====================
+
+    @Test
     void produtosRecomendados_deveRetornarProdutosQuandoServicoRetornaDados() {
-        // Arrange
         String perfil = "ARROJADO";
 
         InvestmentProduct produto1 = new InvestmentProduct();
@@ -102,60 +148,15 @@ class RecommendationResourceTest {
         List<InvestmentProduct> produtos = Arrays.asList(produto1, produto2);
         when(recommendationService.recommendByProfile(perfil)).thenReturn(produtos);
 
-        // Act
         List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados(perfil);
 
-        // Assert
         assertNotNull(result);
         assertEquals(2, result.size());
         verify(recommendationService).recommendByProfile(perfil);
     }
 
     @Test
-    void produtosRecomendados_deveFuncionarComPerfilNulo() {
-        // Arrange
-        when(recommendationService.recommendByProfile(null)).thenReturn(Collections.emptyList());
-
-        // Act
-        List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados(null);
-
-        // Assert
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-        verify(recommendationService).recommendByProfile(null);
-    }
-
-    @Test
-    void produtosRecomendados_deveFuncionarComPerfilVazio() {
-        // Arrange
-        when(recommendationService.recommendByProfile("")).thenReturn(Collections.emptyList());
-
-        // Act
-        List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados("");
-
-        // Assert
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-        verify(recommendationService).recommendByProfile("");
-    }
-
-    @Test
-    void produtosRecomendados_deveChamarServicoCorretamente() {
-        // Arrange
-        String perfil = "MODERADO";
-        when(recommendationService.recommendByProfile(perfil)).thenReturn(Collections.emptyList());
-
-        // Act
-        recommendationResource.produtosRecomendados(perfil);
-
-        // Assert
-        verify(recommendationService, times(1)).recommendByProfile(perfil);
-        verifyNoMoreInteractions(recommendationService);
-    }
-
-    @Test
     void produtosRecomendados_deveConverterProdutosParaDTO() {
-        // Arrange
         String perfil = "CONSERVADOR";
 
         InvestmentProduct produto = new InvestmentProduct();
@@ -165,17 +166,17 @@ class RecommendationResourceTest {
         produto.rentabilidadeAnual = 0.08;
         produto.risco = "Baixa";
 
-        when(recommendationService.recommendByProfile(perfil)).thenReturn(Arrays.asList(produto));
+        when(recommendationService.recommendByProfile(perfil))
+                .thenReturn(Arrays.asList(produto));
 
-        // Act
         List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados(perfil);
 
-        // Assert
         assertNotNull(result);
         assertEquals(1, result.size());
 
         InvestmentProductResponseDTO dto = result.get(0);
         assertNotNull(dto);
+        // se quiser, valide campos específicos aqui
         verify(recommendationService).recommendByProfile(perfil);
     }
 
@@ -205,34 +206,32 @@ class RecommendationResourceTest {
         // Assert
         assertNotNull(result);
         assertEquals(3, result.size());
+        assertNotNull(result.get(0));
+        assertNotNull(result.get(1));
+        assertNotNull(result.get(2));
+
         verify(recommendationService).recommendByProfile(perfil);
     }
 
+
     @Test
     void testInstanciacaoResource() {
-        // Testa que a classe pode ser instanciada corretamente
         RecommendationResource resource = new RecommendationResource();
         assertNotNull(resource);
     }
 
     @Test
-    void produtosRecomendados_deveFuncionarComDiferentesPerfis() {
-        // Testa com vários tipos de perfil
+    void produtosRecomendados_deveLancar404_ParaPerfisSemProdutos() {
         String[] perfis = {"CONSERVADOR", "MODERADO", "ARROJADO"};
 
         for (String perfil : perfis) {
-            // Arrange
-            when(recommendationService.recommendByProfile(perfil)).thenReturn(Collections.emptyList());
+            when(recommendationService.recommendByProfile(perfil))
+                    .thenReturn(Collections.emptyList());
 
-            // Act
-            List<InvestmentProductResponseDTO> result = recommendationResource.produtosRecomendados(perfil);
-
-            // Assert
-            assertNotNull(result);
-            assertTrue(result.isEmpty());
+            assertThrows(NotFoundException.class,
+                    () -> recommendationResource.produtosRecomendados(perfil));
         }
 
-        // Verifica que cada perfil foi chamado
         for (String perfil : perfis) {
             verify(recommendationService).recommendByProfile(perfil);
         }

@@ -3,6 +3,7 @@ package cef.invest.ServiceTest;
 import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
 import cef.financial.domain.repository.InvestmentHistoryRepository;
+import cef.financial.domain.repository.CustomerRepository;
 import cef.financial.domain.service.RiskProfileService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,10 @@ class RiskProfileServiceTest {
 
     @Mock
     InvestmentHistoryRepository historyRepository;
+
+    // NOVO: mock para a nova dependência do serviço
+    @Mock
+    CustomerRepository customerRepository;
 
     @InjectMocks
     RiskProfileService riskProfileService;
@@ -66,7 +71,7 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertEquals("Conservador", resp.perfil);
-        assertEquals(13, resp.pontuacao);
+        assertEquals(13, resp.pontuacao); // 5 (retorno) + 5 (risco baixo) + 3 (pouca experiência)
     }
 
     @Test
@@ -128,13 +133,13 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertEquals("Agressivo", resp.perfil);
-        assertEquals(82, resp.pontuacao);
+        assertEquals(82, resp.pontuacao); // 92 - 10 de penalidade
     }
 
     // ========== AUMENTO DE COBERTURA ==========
 
     @Test
-    @DisplayName("6. Tipos desconhecidos devem ser tratados como risco médio")
+    @DisplayName("6. Tipos desconhecidos devem ser tratados como risco médio (score final Moderado)")
     void calculateProfile_TipoDesconhecido() {
         Long clienteId = 6L;
 
@@ -146,11 +151,11 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertNotNull(resp);
-        assertEquals("Moderado", resp.perfil); // retorno médio + risco médio + pouca exp
+        assertEquals("Moderado", resp.perfil);
     }
 
     @Test
-    @DisplayName("7. Rentabilidade zero deve ser moderado para retorno")
+    @DisplayName("7. Rentabilidade zero deve ser moderado para retorno, mas perfil final Conservador")
     void calculateProfile_RentabilidadeZero() {
         Long clienteId = 7L;
 
@@ -240,6 +245,6 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertEquals("Agressivo", resp.perfil);
-        assertEquals(100, resp.pontuacao); // pontuação máximo
+        assertEquals(100, resp.pontuacao); // pontuação máxima
     }
 }

@@ -12,7 +12,7 @@ import jakarta.ws.rs.ext.Provider;
 public class SecurityForbiddenExceptionMapper implements ExceptionMapper<ForbiddenException> {
 
     @Context
-    UriInfo uriInfo;
+    public UriInfo uriInfo;
 
     @Override
     public Response toResponse(ForbiddenException exception) {

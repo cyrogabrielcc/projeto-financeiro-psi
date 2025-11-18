@@ -166,12 +166,7 @@ class SimulationResourceIT {
                 .then()
                 .statusCode(200);
 
-        // 🔴 ERRADO (gera o erro que você viu):
-        // long count = simulationRepository.count("valorInicial", 7000.0);
-
-        // ✅ CERTO – usando o nome do atributo da entidade:
-        long count = simulationRepository.count("valorInvestido", 7000.0);
-        // ou: long count = simulationRepository.count("valorInvestido = ?1", 7000.0);
+     long count = simulationRepository.count("valorInvestido", 7000.0);
 
         Assertions.assertTrue(count > 0);
     }
