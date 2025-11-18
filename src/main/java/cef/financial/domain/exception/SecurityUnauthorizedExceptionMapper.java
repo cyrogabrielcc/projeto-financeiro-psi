@@ -12,7 +12,7 @@ import jakarta.ws.rs.ext.Provider;
 public class SecurityUnauthorizedExceptionMapper implements ExceptionMapper<Throwable> {
 
     @Context
-    UriInfo uriInfo;
+    public UriInfo uriInfo;
 
     @Override
     public Response toResponse(Throwable exception) {

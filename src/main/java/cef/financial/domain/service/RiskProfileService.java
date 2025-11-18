@@ -23,6 +23,16 @@ public class RiskProfileService {
     @Transactional
     public RiskProfileResponseDTO calculateProfile(Long clienteId) {
 
+        // ===== Validação simples do ID do cliente =====
+        if (clienteId == null || clienteId <= 0) {
+            RiskProfileResponseDTO response = new RiskProfileResponseDTO();
+            response.clienteId = clienteId;
+            response.perfil = "Inválido";
+            response.pontuacao = 0;
+            response.descricao = "ID do cliente inválido. O valor deve ser um número positivo.";
+            return response;
+        }
+
         List<InvestmentHistory> history =
                 historyRepository.list("clienteId", clienteId);
 
@@ -94,6 +104,7 @@ public class RiskProfileService {
 
         double rawScore = returnScore + riskExposureScore + experienceScore;
 
+        // Penalização para pouca experiência com risco alto
         if (qtdOperacoes < 3 && maxRiskLevel == 3) {
             rawScore -= 10;
         }
@@ -117,11 +128,7 @@ public class RiskProfileService {
         // ===== 4) Atualiza o perfil do cliente na tabela CUSTOMER =====
         Customer customer = customerRepository.findById(clienteId);
         if (customer != null) {
-            // opcional: se quiser manter padrão em caixa alta como no seed:
-            // customer.perfil = perfil.toUpperCase();
             customer.perfil = perfil;
-            // como o método é @Transactional, não precisa chamar persist/flush:
-            // o Hibernate fará flush automático no commit
         }
 
         RiskProfileResponseDTO response = new RiskProfileResponseDTO();

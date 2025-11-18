@@ -9,6 +9,7 @@ import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirementsSet;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import java.util.Set;
 
@@ -28,6 +29,7 @@ public class AuthResource {
     @Path("/login")
     @PermitAll
     @SecurityRequirementsSet   // <<< ESSA É UMA DAS QUE O TESTE COBRA
+    @Tag(name = "1 - LOGIN DE USUÁRIO")
     @Operation(summary = "Realiza login e retorna um token JWT")
     @APIResponses({
             @APIResponse(responseCode = "200", description = "Login realizado com sucesso"),
