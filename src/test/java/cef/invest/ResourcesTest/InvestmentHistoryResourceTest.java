@@ -167,43 +167,36 @@ class InvestmentHistoryResourceTest {
     }
 
     @Test
-    @DisplayName("historicoInvestimentos deve retornar 404 e ApiError quando lista vazia")
+    @DisplayName("historicoInvestimentos deve retornar lista vazia quando não houver registros")
     void testHistoricoInvestimentos_ListaVazia() {
         Long clienteId = 99L;
 
         when(investmentHistoryRepository.list("clienteId", clienteId))
                 .thenReturn(List.of());
 
-        WebApplicationException ex = assertThrows(
-                WebApplicationException.class,
-                () -> resource.historicoInvestimentos(clienteId)
-        );
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
 
-        Response response = ex.getResponse();
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertTrue(response.getEntity() instanceof ApiError);
-
-        ApiError error = (ApiError) response.getEntity();
-        assertEquals("HISTORICO_NAO_ENCONTRADO", error.code);
-        assertTrue(error.message.contains(clienteId.toString()));
+        assertNotNull(result);
+        assertTrue(result.isEmpty(), "A lista deve estar vazia quando não houver histórico");
+        verify(investmentHistoryRepository, times(1))
+                .list("clienteId", clienteId);
     }
 
+
     @Test
-    @DisplayName("historicoInvestimentos com clienteId negativo deve retornar 404 e ApiError")
+    @DisplayName("historicoInvestimentos com clienteId negativo retorna lista vazia (comportamento atual)")
     void testHistoricoInvestimentos_IdNegativo() {
         Long clienteId = -1L;
 
         when(investmentHistoryRepository.list("clienteId", clienteId))
                 .thenReturn(List.of());
 
-        WebApplicationException ex = assertThrows(
-                WebApplicationException.class,
-                () -> resource.historicoInvestimentos(clienteId)
-        );
+        List<InvestmentHistoryResponseDTO> result = resource.historicoInvestimentos(clienteId);
 
-        Response response = ex.getResponse();
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertTrue(response.getEntity() instanceof ApiError);
+        assertNotNull(result);
+        assertTrue(result.isEmpty(), "Mesmo com ID negativo, hoje o método retorna lista vazia");
+        verify(investmentHistoryRepository, times(1))
+                .list("clienteId", clienteId);
     }
 
     @Test

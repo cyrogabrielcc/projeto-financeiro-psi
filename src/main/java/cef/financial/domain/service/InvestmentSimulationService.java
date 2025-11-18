@@ -35,7 +35,7 @@ public class InvestmentSimulationService {
     InvestmentSimulationRepository simulationRepository;
 
     @Inject
-    CustomerRepository customerRepository; // <<<<<< INJETADO
+    CustomerRepository customerRepository;
 
     @Transactional
     public InvestmentSimulationResponseDTO simulate(InvestmentSimulationRequestDTO request) {
@@ -45,7 +45,7 @@ public class InvestmentSimulationService {
 
             // 1.1) garante que o cliente exista (ou cria) e obtém o ID real
             Customer cliente = obterOuCriarCliente(request.clienteId);
-            Long clienteIdReal = cliente.id; // aqui será igual ao request.clienteId
+            Long clienteIdReal = cliente.id;
 
             // 2) escolhe/valida produto com base nas regras
             InvestmentProduct product = escolherProdutoElegivel(request);
@@ -63,7 +63,7 @@ public class InvestmentSimulationService {
 
             // 5) persistência da simulação
             InvestmentSimulation sim = new InvestmentSimulation();
-            sim.clienteId = clienteIdReal;   // <<< usa o ID real do cliente (igual ao request)
+            sim.clienteId = clienteIdReal;
             sim.produto = product;
             sim.valorInvestido = request.valor;
             sim.valorFinal = valorFinal;
@@ -75,7 +75,7 @@ public class InvestmentSimulationService {
             // 6) resposta
             return new InvestmentSimulationResponseDTO(
                     new InvestmentSimulationResponseDTO.ProdutoValidado(
-                            product.id,
+                            product.id,              // <<< aqui trocamos de idProduto para id
                             product.nome,
                             product.tipo,
                             taxaAnual,
@@ -101,20 +101,16 @@ public class InvestmentSimulationService {
         }
     }
 
-    // ============================================================
-    // Cliente: obter ou criar (usando ID da requisição)
-    // ============================================================
+    // ================= Cliente =================
     private Customer obterOuCriarCliente(Long clienteIdRequest) {
-        // Primeiro tenta achar um cliente com esse ID
         Customer existente = customerRepository.findById(clienteIdRequest);
         if (existente != null) {
             LOG.debugf("Cliente %d encontrado na base.", clienteIdRequest);
             return existente;
         }
 
-        // Se não encontrou, cria um novo cliente usando o ID da requisição
         Customer novo = new Customer();
-        novo.id = clienteIdRequest;  // <<< AQUI: ID manual
+        novo.id = clienteIdRequest;
         novo.perfil = "INDEFINIDO";
         novo.criadoEm = OffsetDateTime.now(ZoneOffset.UTC);
 
@@ -124,9 +120,7 @@ public class InvestmentSimulationService {
         return novo;
     }
 
-    // ============================================================
-    // Validações de entrada
-    // ============================================================
+    // ================= Validações =================
     private void validarRequest(InvestmentSimulationRequestDTO request) {
 
         if (request == null) {
@@ -165,9 +159,7 @@ public class InvestmentSimulationService {
         }
     }
 
-    // ============================================================
-    // Escolha / validação de produto
-    // ============================================================
+    // ================= Produto =================
     private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request) {
         if (request.produtoId != null && request.produtoId > 0) {
 
@@ -255,9 +247,7 @@ public class InvestmentSimulationService {
         );
     }
 
-    // ============================================================
-    // Validação de rentabilidade
-    // ============================================================
+    // ================= Rentabilidade =================
     private double validarRentabilidade(InvestmentProduct product) {
         Double taxaAnualObj = product.rentabilidadeAnual;
 

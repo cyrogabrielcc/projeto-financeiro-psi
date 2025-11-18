@@ -1,13 +1,19 @@
 package cef.financial.domain.model;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "HTE_INVESTMENT_PRODUCT")
-public class InvestmentProduct extends PanacheEntity {
+public class InvestmentProduct extends PanacheEntityBase {
+
+    @Id
+    @Column(name = "id")
+    public Long id;
 
     @Column(nullable = false)
     public String nome;

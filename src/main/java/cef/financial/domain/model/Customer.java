@@ -15,7 +15,6 @@ import java.time.OffsetDateTime;
 public class Customer extends PanacheEntityBase {
 
     @Id
-    // IMPORTANTE: sem @GeneratedValue aqui, o ID será definido pela aplicação
     public Long id;
 
 

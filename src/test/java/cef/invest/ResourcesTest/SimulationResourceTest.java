@@ -20,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -38,6 +37,7 @@ class SimulationResourceTest {
 
     @BeforeEach
     void setUp() {
+        // usa o construtor que recebe o service (que você já definiu no Resource)
         resource = new SimulationResource(simulationService);
     }
 
@@ -127,6 +127,7 @@ class SimulationResourceTest {
     void testListarSimulacoes_MapeamentoCompleto() {
 
         InvestmentProduct prod = new InvestmentProduct();
+        prod.id = 1L; // acompanha seu padrão de IDs fixos
         prod.nome = "Produto Teste";
 
         InvestmentSimulation sim = new InvestmentSimulation();
@@ -136,7 +137,7 @@ class SimulationResourceTest {
         sim.valorInvestido = 1000;
         sim.valorFinal = 1200;
         sim.prazoMeses = 12;
-        sim.dataSimulacao = OffsetDateTime.now();
+        sim.dataSimulacao = OffsetDateTime.now(ZoneOffset.UTC);
 
         when(simulationService.listAllSimulations()).thenReturn(List.of(sim));
 
@@ -161,8 +162,13 @@ class SimulationResourceTest {
     @Test
     void testSimulacoesPorProdutoDia_MapeamentoCompleto() {
 
-        InvestmentProduct a = new InvestmentProduct(); a.nome = "A";
-        InvestmentProduct b = new InvestmentProduct(); b.nome = "B";
+        InvestmentProduct a = new InvestmentProduct();
+        a.id = 1L;
+        a.nome = "A";
+
+        InvestmentProduct b = new InvestmentProduct();
+        b.id = 2L;
+        b.nome = "B";
 
         OffsetDateTime d1 = OffsetDateTime.of(2025,11,1,10,0,0,0,ZoneOffset.UTC);
         OffsetDateTime d2 = OffsetDateTime.of(2025,11,2,10,0,0,0,ZoneOffset.UTC);
