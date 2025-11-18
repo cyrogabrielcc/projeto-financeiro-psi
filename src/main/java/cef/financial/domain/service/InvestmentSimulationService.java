@@ -2,10 +2,13 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.InvestmentSimulationRequestDTO;
 import cef.financial.domain.dto.InvestmentSimulationResponseDTO;
+import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.model.Customer;
+import cef.financial.domain.model.InvestmentHistory;
 import cef.financial.domain.model.InvestmentProduct;
 import cef.financial.domain.model.InvestmentSimulation;
 import cef.financial.domain.repository.CustomerRepository;
+import cef.financial.domain.repository.InvestmentHistoryRepository;
 import cef.financial.domain.repository.InvestmentProductRepository;
 import cef.financial.domain.repository.InvestmentSimulationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,6 +40,12 @@ public class InvestmentSimulationService {
     @Inject
     CustomerRepository customerRepository;
 
+    @Inject
+    InvestmentHistoryRepository historyRepository;
+
+    @Inject
+    RiskProfileService riskProfileService;
+
     @Transactional
     public InvestmentSimulationResponseDTO simulate(InvestmentSimulationRequestDTO request) {
         try {
@@ -47,8 +56,8 @@ public class InvestmentSimulationService {
             Customer cliente = obterOuCriarCliente(request.clienteId);
             Long clienteIdReal = cliente.id;
 
-            // 2) escolhe/valida produto com base nas regras
-            InvestmentProduct product = escolherProdutoElegivel(request);
+            // 2) escolhe/valida produto com base nas regras + mini motor de recomendação
+            InvestmentProduct product = escolherProdutoElegivel(request, cliente);
 
             // 3) valida rentabilidade do produto
             double taxaAnual = validarRentabilidade(product);
@@ -71,11 +80,30 @@ public class InvestmentSimulationService {
             sim.dataSimulacao = agora;
 
             simulationRepository.persist(sim);
+            LOG.infof("Simulação persistida para cliente=%d, produto=%d, valor=%.2f, prazo=%d",
+                    clienteIdReal, product.id, request.valor, request.prazoMeses);
 
-            // 6) resposta
+            // 6) registrar operação no histórico do cliente
+            InvestmentHistory hist = new InvestmentHistory();
+            hist.clienteId = clienteIdReal;
+            hist.tipo = product.tipo != null ? product.tipo : product.nome;
+            hist.valor = request.valor;
+            hist.rentabilidade = rentabilidadeEfetiva; // retorno da simulação
+            hist.dataInvestimento = agora.toLocalDate();
+
+            historyRepository.persist(hist);
+            LOG.infof("Histórico de investimento registrado para cliente=%d, tipo=%s, rentabilidade=%.4f",
+                    clienteIdReal, hist.tipo, hist.rentabilidade);
+
+            // 7) recalcular o perfil de risco do cliente com base no histórico atualizado
+            RiskProfileResponseDTO perfilAtualizado = riskProfileService.calculateProfile(clienteIdReal);
+            LOG.infof("Perfil de risco recalculado para cliente=%d: perfil=%s, score=%d",
+                    clienteIdReal, perfilAtualizado.perfil, perfilAtualizado.pontuacao);
+
+            // 8) resposta
             return new InvestmentSimulationResponseDTO(
                     new InvestmentSimulationResponseDTO.ProdutoValidado(
-                            product.id,              // <<< aqui trocamos de idProduto para id
+                            product.id,
                             product.nome,
                             product.tipo,
                             taxaAnual,
@@ -105,7 +133,8 @@ public class InvestmentSimulationService {
     private Customer obterOuCriarCliente(Long clienteIdRequest) {
         Customer existente = customerRepository.findById(clienteIdRequest);
         if (existente != null) {
-            LOG.debugf("Cliente %d encontrado na base.", clienteIdRequest);
+            LOG.debugf("Cliente %d encontrado na base. Perfil atual=%s",
+                    clienteIdRequest, existente.perfil);
             return existente;
         }
 
@@ -159,8 +188,11 @@ public class InvestmentSimulationService {
         }
     }
 
-    // ================= Produto =================
-    private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request) {
+    // ================= Produto + Motor de Recomendação =================
+    private InvestmentProduct escolherProdutoElegivel(InvestmentSimulationRequestDTO request,
+                                                      Customer cliente) {
+
+        // 1) Se o cliente escolheu produto explicitamente, só valida prazo + compatibilidade com perfil
         if (request.produtoId != null && request.produtoId > 0) {
 
             InvestmentProduct product = productRepository.findById(request.produtoId);
@@ -187,11 +219,21 @@ public class InvestmentSimulationService {
                 );
             }
 
+            if (!produtoCompatívelComPerfil(cliente, product)) {
+                LOG.warnf(
+                        "Produto explicitamente escolhido (%d) não é compatível com o perfil do cliente (%s).",
+                        product.id,
+                        cliente != null ? cliente.perfil : "N/D"
+                );
+                // aqui podemos optar por lançar erro se quiser ser rígido
+            }
+
             LOG.infof("Produto escolhido explicitamente pelo cliente: id=%d, nome=%s",
                     product.id, product.nome);
             return product;
         }
 
+        // 2) Nenhum produto escolhido → usar motor de recomendação
         List<InvestmentProduct> todosProdutos = productRepository.listAll();
         if (todosProdutos.isEmpty()) {
             throw new WebApplicationException(
@@ -200,26 +242,45 @@ public class InvestmentSimulationService {
             );
         }
 
-        List<InvestmentProduct> elegiveis = todosProdutos.stream()
+        // 2.1) Filtro básico: prazo e tipo
+        List<InvestmentProduct> elegiveisBase = todosProdutos.stream()
                 .filter(p -> atendePrazo(p, request.prazoMeses))
                 .filter(p -> tipoCompativel(p, request.tipoProduto))
                 .collect(Collectors.toList());
 
-        if (elegiveis.isEmpty()) {
+        if (elegiveisBase.isEmpty()) {
             throw new WebApplicationException(
                     "Nenhum produto atende aos parâmetros informados (prazo/tipo).",
                     STATUS_UNPROCESSABLE_ENTITY
             );
         }
 
-        InvestmentProduct escolhido = elegiveis.stream()
-                .filter(p -> p.rentabilidadeAnual != null)
-                .max(Comparator.comparingDouble(p -> p.rentabilidadeAnual))
-                .orElse(elegiveis.get(0));
+        // 2.2) Filtro por perfil do cliente
+        List<InvestmentProduct> elegiveisPerfil = filtrarPorPerfilCliente(cliente, elegiveisBase);
 
-        LOG.infof("Produto escolhido automaticamente: id=%d, nome=%s, tipo=%s, taxaAnual=%.4f",
-                escolhido.id, escolhido.nome, escolhido.tipo,
-                escolhido.rentabilidadeAnual != null ? escolhido.rentabilidadeAnual : 0.0);
+        List<InvestmentProduct> baseParaRanking =
+                elegiveisPerfil.isEmpty() ? elegiveisBase : elegiveisPerfil;
+
+        if (elegiveisPerfil.isEmpty()) {
+            LOG.info("Motor de recomendação: nenhum produto compatível com o perfil do cliente. " +
+                    "Usando apenas filtros de prazo/tipo.");
+        } else {
+            LOG.infof("Motor de recomendação: %d produtos compatíveis com o perfil do cliente.",
+                    elegiveisPerfil.size());
+        }
+
+        // 2.3) Dentro dos produtos ainda elegíveis, decidir entre liquidez vs rentabilidade
+        InvestmentProduct escolhido =
+                escolherPorPreferenciaLiquidezOuRentabilidade(request, baseParaRanking);
+
+        LOG.infof("Produto escolhido automaticamente pelo motor de recomendação: " +
+                        "id=%d, nome=%s, tipo=%s, risco=%s, taxaAnual=%.4f",
+                escolhido.id,
+                escolhido.nome,
+                escolhido.tipo,
+                escolhido.risco,
+                escolhido.rentabilidadeAnual != null ? escolhido.rentabilidadeAnual : 0.0
+        );
 
         return escolhido;
     }
@@ -270,5 +331,111 @@ public class InvestmentSimulationService {
 
     public List<InvestmentSimulation> listAllSimulations() {
         return simulationRepository.listAll();
+    }
+
+    // ===================== Mini Motor de Recomendação =====================
+
+    private boolean produtoCompatívelComPerfil(Customer cliente, InvestmentProduct produto) {
+        if (cliente == null || cliente.perfil == null || produto == null) {
+            return true; // se não souber o perfil, não bloqueia
+        }
+        int riscoProduto = riscoScore(produto.risco);
+        int maxRiscoCliente = perfilMaxRiskScore(cliente.perfil);
+        return riscoProduto <= maxRiscoCliente;
+    }
+
+    private List<InvestmentProduct> filtrarPorPerfilCliente(Customer cliente,
+                                                            List<InvestmentProduct> produtos) {
+        if (cliente == null || cliente.perfil == null || produtos == null || produtos.isEmpty()) {
+            return List.of();
+        }
+
+        int maxRiscoCliente = perfilMaxRiskScore(cliente.perfil);
+
+        return produtos.stream()
+                .filter(p -> riscoScore(p.risco) <= maxRiscoCliente)
+                .collect(Collectors.toList());
+    }
+
+    private int perfilMaxRiskScore(String perfilCliente) {
+        if (perfilCliente == null) return 2; // default = moderado
+
+        String p = perfilCliente.trim().toUpperCase();
+        return switch (p) {
+            case "CONSERVADOR" -> 1;
+            case "MODERADO" -> 2;
+            case "AGRESSIVO", "ARROJADO" -> 3;
+            default -> 2;
+        };
+    }
+
+    private int riscoScore(String riscoProduto) {
+        if (riscoProduto == null) return 2;
+
+        String r = riscoProduto.trim().toUpperCase();
+        return switch (r) {
+            case "BAIXO", "BAIXO RISCO" -> 1;
+            case "MEDIO", "MÉDIO", "MODERADO" -> 2;
+            case "ALTO", "ALTO RISCO" -> 3;
+            default -> 2;
+        };
+    }
+
+    /**
+     * Dentro dos produtos compatíveis com prazo/tipo/perfil, decide:
+     *
+     * - Prazo curto (<= 12 meses)  → prioriza LIQUIDEZ (menor liquidezDias), desempate por maior rentabilidade
+     * - Prazo longo  (> 12 meses)  → prioriza RENTABILIDADE (maior rentabilidadeAnual), desempate por menor liquidez
+     */
+    private InvestmentProduct escolherPorPreferenciaLiquidezOuRentabilidade(
+            InvestmentSimulationRequestDTO request,
+            List<InvestmentProduct> candidatos) {
+
+        if (candidatos == null || candidatos.isEmpty()) {
+            throw new WebApplicationException(
+                    "Nenhum produto disponível para recomendação.",
+                    STATUS_UNPROCESSABLE_ENTITY
+            );
+        }
+
+        if (candidatos.size() == 1) {
+            return candidatos.get(0);
+        }
+
+        boolean prefereLiquidez = request.prazoMeses <= 12;
+
+        if (prefereLiquidez) {
+            // prioriza produtos com menor liquidezDias (resgate mais rápido)
+            return candidatos.stream()
+                    .sorted(
+                            Comparator
+                                    .comparing((InvestmentProduct p) ->
+                                            p.liquidezDias != null ? p.liquidezDias : Integer.MAX_VALUE)
+                                    .thenComparing(
+                                            (InvestmentProduct p) ->
+                                                    p.rentabilidadeAnual != null ? p.rentabilidadeAnual : 0.0,
+                                            Comparator.reverseOrder()
+                                    )
+                    )
+                    .findFirst()
+                    .orElse(candidatos.get(0));
+        } else {
+            // prioriza produtos com maior rentabilidadeAnual, desempata pela liquidez
+            return candidatos.stream()
+                    .sorted(
+                            Comparator
+                                    .comparing(
+                                            (InvestmentProduct p) ->
+                                                    p.rentabilidadeAnual != null ? p.rentabilidadeAnual : 0.0,
+                                            Comparator.reverseOrder()
+                                    )
+                                    .thenComparing(
+                                            (InvestmentProduct p) ->
+                                                    p.liquidezDias != null ? p.liquidezDias : Integer.MAX_VALUE
+                                    )
+                    )
+                    .findFirst()
+                    .orElse(candidatos.get(0));
+        }
     }
 }

@@ -53,8 +53,15 @@ public class RiskProfileService {
 
         for (InvestmentHistory h : history) {
             double valor = h.valor;
+
+            // Normalização de rentabilidade:
+            // Se a rentabilidade vier em percentual (ex: 10 = 10%), convertemos para 0.10
             double rentabilidade = h.rentabilidade;
 
+            // Se vier em percentual (ex.: 10 significa 10%), converte:
+            if (rentabilidade > 1.0) {
+                rentabilidade = rentabilidade / 100.0;
+            }
             double peso = valor > 0 ? valor : 1.0;
             pesoTotal += peso;
             weightedReturn += rentabilidade * peso;
@@ -67,46 +74,48 @@ public class RiskProfileService {
 
         double avgReturn = (pesoTotal > 0) ? (weightedReturn / pesoTotal) : 0.0;
 
-        // ===== 1) Score pela rentabilidade média (0 a ~60) =====
+        // ===== 1) Score pela rentabilidade média (0 a 40) =====
+        // Faixas mais suaves para não empurrar todo mundo pra cima
         double returnScore;
         if (avgReturn <= 0) {
-            returnScore = 5;
-        } else if (avgReturn <= 0.05) {
-            returnScore = 20;
-        } else if (avgReturn <= 0.10) {
-            returnScore = 35;
-        } else if (avgReturn <= 0.15) {
-            returnScore = 50;
+            returnScore = 5;          // prejuízo ou zero
+        } else if (avgReturn <= 0.03) {
+            returnScore = 15;         // até 3% ao ano
+        } else if (avgReturn <= 0.07) {
+            returnScore = 25;         // até 7% ao ano
+        } else if (avgReturn <= 0.12) {
+            returnScore = 35;         // até 12% ao ano
         } else {
-            returnScore = 60;
+            returnScore = 40;         // acima de 12% ao ano
         }
 
-        // ===== 2) Score pela exposição ao risco (0 a 25) =====
+        // ===== 2) Score pela exposição ao risco (0 a 30) =====
+        // Mantém a ideia de risco máximo, mas com pesos ajustados
         double riskExposureScore;
         switch (maxRiskLevel) {
-            case 1 -> riskExposureScore = 5;
-            case 2 -> riskExposureScore = 15;
-            case 3 -> riskExposureScore = 25;
+            case 1 -> riskExposureScore = 5;   // só renda fixa / baixo risco
+            case 2 -> riskExposureScore = 18;  // multimercado / médio risco
+            case 3 -> riskExposureScore = 30;  // ações / FIIs / alta volatilidade
             default -> riskExposureScore = 0;
         }
 
-        // ===== 3) Score pela experiência (qtd de operações) (0 a 15) =====
+        // ===== 3) Score pela experiência (qtd de operações) (0 a 25) =====
         double experienceScore;
         if (qtdOperacoes <= 1) {
-            experienceScore = 3;
+            experienceScore = 5;
         } else if (qtdOperacoes <= 3) {
-            experienceScore = 7;
+            experienceScore = 10;
         } else if (qtdOperacoes <= 10) {
-            experienceScore = 12;
+            experienceScore = 18;
         } else {
-            experienceScore = 15;
+            experienceScore = 25;
         }
 
         double rawScore = returnScore + riskExposureScore + experienceScore;
 
-        // Penalização para pouca experiência com risco alto
+        // Penalização mais forte para pouca experiência com risco alto
         if (qtdOperacoes < 3 && maxRiskLevel == 3) {
-            rawScore -= 10;
+            rawScore -= 15;
         }
 
         int score = (int) Math.round(Math.max(0, Math.min(100, rawScore)));
@@ -114,10 +123,14 @@ public class RiskProfileService {
         String perfil;
         String descricao;
 
-        if (score <= 30) {
+        // ===== 4) Faixas calibradas de perfil =====
+        // <= 35: Conservador
+        // 36–65: Moderado
+        // > 65: Agressivo
+        if (score <= 35) {
             perfil = "Conservador";
             descricao = "Perfil com baixa tolerância a risco, priorizando segurança e preservação do capital.";
-        } else if (score <= 60) {
+        } else if (score <= 65) {
             perfil = "Moderado";
             descricao = "Perfil equilibrado, disposto a assumir algum risco em busca de melhor rentabilidade.";
         } else {
@@ -125,7 +138,7 @@ public class RiskProfileService {
             descricao = "Perfil com alta tolerância ao risco, aceitando maior volatilidade em troca de potenciais ganhos.";
         }
 
-        // ===== 4) Atualiza o perfil do cliente na tabela CUSTOMER =====
+        // ===== 5) Atualiza o perfil do cliente na tabela CUSTOMER =====
         Customer customer = customerRepository.findById(clienteId);
         if (customer != null) {
             customer.perfil = perfil;
@@ -146,6 +159,7 @@ public class RiskProfileService {
 
         String t = tipo.toLowerCase();
 
+        // Alto risco
         if (t.contains("ação") || t.contains("acoes")
                 || t.contains("renda variável") || t.contains("renda variavel")
                 || t.contains("fii")
@@ -153,10 +167,12 @@ public class RiskProfileService {
             return 3;
         }
 
+        // Médio risco
         if (t.contains("multimercado") || t.contains("fundo")) {
             return 2;
         }
 
+        // Baixo risco
         if (t.contains("cdb")
                 || t.contains("lci")
                 || t.contains("lca")
