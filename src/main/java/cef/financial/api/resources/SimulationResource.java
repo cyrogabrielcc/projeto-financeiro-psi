@@ -22,6 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -153,6 +154,7 @@ public class SimulationResource {
 
                             return dto;
                         })
-                ).toList();
+                ).sorted(Comparator.comparing((SimulationByProductDayResponseDTO dto) -> dto.data).reversed())
+                .toList();
     }
 }

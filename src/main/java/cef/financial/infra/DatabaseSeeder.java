@@ -68,6 +68,7 @@ public class DatabaseSeeder {
         cdb100.tipo = "CDB";
         cdb100.risco = "BAIXO";
         cdb100.liquidezDias = 1;
+        cdb100.perfilRecomendado = "CONSERVADOR";
         cdb100.prazoMinMeses = 6;
         cdb100.prazoMaxMeses = 36;
         cdb100.rentabilidadeAnual = 0.13;
@@ -79,6 +80,7 @@ public class DatabaseSeeder {
         cdb120.nome = "CDB 120% CDI";
         cdb120.tipo = "CDB";
         cdb120.risco = "MÉDIO";
+        cdb120.perfilRecomendado = "MODERADO";
         cdb120.liquidezDias = 30;
         cdb120.prazoMinMeses = 12;
         cdb120.prazoMaxMeses = 48;
@@ -91,6 +93,7 @@ public class DatabaseSeeder {
         tesouroSelic.nome = "Tesouro Selic 2029";
         tesouroSelic.tipo = "TESOURO";
         tesouroSelic.risco = "BAIXO";
+        tesouroSelic.perfilRecomendado = "CONSERVADOR";
         tesouroSelic.liquidezDias = 1;
         tesouroSelic.prazoMinMeses = 24;
         tesouroSelic.prazoMaxMeses = 60;
@@ -102,6 +105,7 @@ public class DatabaseSeeder {
         fundoMulti.id = nextId++;
         fundoMulti.nome = "Fundo Multimercado XYZ";
         fundoMulti.tipo = "Fundo Multimercado";
+        fundoMulti.perfilRecomendado = "ARROJADO";
         fundoMulti.risco = "ALTO";
         fundoMulti.liquidezDias = 30;
         fundoMulti.prazoMinMeses = 12;
@@ -115,6 +119,7 @@ public class DatabaseSeeder {
         lci.nome = "LCI Imobiliária 95% CDI";
         lci.tipo = "LCI";
         lci.risco = "BAIXO";
+        lci.perfilRecomendado = "CONSERVADOR";
         lci.liquidezDias = 90;
         lci.prazoMinMeses = 12;
         lci.prazoMaxMeses = 36;
@@ -126,6 +131,7 @@ public class DatabaseSeeder {
         debenture.id = nextId++;
         debenture.nome = "Debênture Incentivada ABC";
         debenture.tipo = "Debênture";
+        debenture.perfilRecomendado = "MODERADO";
         debenture.risco = "MÉDIO";
         debenture.liquidezDias = 0; // sem liquidez diária
         debenture.prazoMinMeses = 36;
@@ -240,57 +246,64 @@ public class DatabaseSeeder {
     }
 
     // ================== HISTÓRICO DE INVESTIMENTOS ==================
+    // ================== HISTÓRICO DE INVESTIMENTOS ==================
     private void seedInvestmentHistory() {
         long historyCount = InvestmentHistory.count();
 
+        // se já tem histórico, não ressemeia (evita duplicar em todo restart)
         if (historyCount > 0) {
             LOG.infof("DatabaseSeeder: já existem %d registros em HTE_INVESTMENT_HISTORY. Seed ignorado.", historyCount);
             return;
         }
 
         List<Customer> customers = customerRepository.listAll();
-        if (customers.isEmpty()) {
-            LOG.warn("DatabaseSeeder: sem clientes para criar histórico de investimentos.");
+        List<InvestmentProduct> products = productRepository.listAll();
+
+        if (customers.isEmpty() || products.isEmpty()) {
+            LOG.warn("DatabaseSeeder: sem clientes ou produtos para criar histórico de investimentos.");
             return;
         }
 
         LOG.info("DatabaseSeeder: criando histórico de investimentos de teste...");
 
-        Customer c1 = customers.get(0);
-        Customer c2 = customers.size() > 1 ? customers.get(1) : c1;
+        int registrosPorCliente = 4; // você pode aumentar se quiser
+        int created = 0;
+        LocalDate hoje = LocalDate.now();
 
-        InvestmentHistory h1 = new InvestmentHistory();
-        h1.clienteId = c1.id;
-        h1.tipo = "CDB";
-        h1.valor = 5000.00;
-        h1.rentabilidade = 0.12;
-        h1.dataInvestimento = LocalDate.of(2025, 1, 15);
-        h1.persist();
+        for (Customer c : customers) {
+            for (int i = 0; i < registrosPorCliente; i++) {
 
-        InvestmentHistory h2 = new InvestmentHistory();
-        h2.clienteId = c1.id;
-        h2.tipo = "Fundo Multimercado";
-        h2.valor = 3000.00;
-        h2.rentabilidade = 0.08;
-        h2.dataInvestimento = LocalDate.of(2025, 3, 10);
-        h2.persist();
+                // escolhe um produto “pseudo-aleatório” baseado no id e no índice
+                InvestmentProduct product =
+                        products.get((int) ((c.id + i) % products.size()));
 
-        InvestmentHistory h3 = new InvestmentHistory();
-        h3.clienteId = c2.id;
-        h3.tipo = "Tesouro Selic";
-        h3.valor = 8000.00;
-        h3.rentabilidade = 0.09;
-        h3.dataInvestimento = LocalDate.of(2024, 11, 20);
-        h3.persist();
+                InvestmentHistory h = new InvestmentHistory();
+                h.clienteId = c.id;
+                h.tipo = product.tipo;
 
-        InvestmentHistory h4 = new InvestmentHistory();
-        h4.clienteId = c2.id;
-        h4.tipo = "CDB";
-        h4.valor = 4000.00;
-        h4.rentabilidade = 0.11;
-        h4.dataInvestimento = LocalDate.of(2025, 2, 5);
-        h4.persist();
+                // valor base varia por cliente e por operação
+                double valorBase = 2000.0 + (c.id * 500.0) + (i * 300.0);
+                h.valor = valorBase;
 
-        LOG.infof("DatabaseSeeder: criados %d registros de histórico de investimentos.", InvestmentHistory.count());
+                // usa a rentabilidade anual do produto como proxy da rentabilidade
+                // se não tiver, assume 10%
+                double rentabilidadeAnual = product.rentabilidadeAnual != null
+                        ? product.rentabilidadeAnual
+                        : 0.10;
+                h.rentabilidade = rentabilidadeAnual;
+
+                // datas de investimento espalhadas alguns meses pra trás
+                h.dataInvestimento = hoje.minusMonths(i + (int) (c.id % 6));
+
+                h.persist();
+                created++;
+            }
+        }
+
+        LOG.infof(
+                "DatabaseSeeder: criados %d registros de histórico de investimentos. Total na base: %d",
+                created, InvestmentHistory.count()
+        );
     }
+
 }

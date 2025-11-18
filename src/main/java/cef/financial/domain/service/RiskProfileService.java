@@ -2,7 +2,9 @@ package cef.financial.domain.service;
 
 import cef.financial.domain.dto.RiskProfileResponseDTO;
 import cef.financial.domain.model.InvestmentHistory;
+import cef.financial.domain.model.Customer;
 import cef.financial.domain.repository.InvestmentHistoryRepository;
+import cef.financial.domain.repository.CustomerRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -15,13 +17,16 @@ public class RiskProfileService {
     @Inject
     InvestmentHistoryRepository historyRepository;
 
+    @Inject
+    CustomerRepository customerRepository;
+
     @Transactional
     public RiskProfileResponseDTO calculateProfile(Long clienteId) {
 
         List<InvestmentHistory> history =
                 historyRepository.list("clienteId", clienteId);
 
-        // Sempre 200, mas com perfil "Indefinido" quando não há histórico
+        // Sem histórico → perfil indefinido (não altera o cliente)
         if (history == null || history.isEmpty()) {
             RiskProfileResponseDTO response = new RiskProfileResponseDTO();
             response.clienteId = clienteId;
@@ -32,22 +37,17 @@ public class RiskProfileService {
         }
 
         int qtdOperacoes = history.size();
-        double totalValor = 0.0;
-        double weightedReturnSum = 0.0;
+        double pesoTotal = 0.0;
+        double weightedReturn = 0.0;
         int maxRiskLevel = 0; // 1 = baixo, 2 = médio, 3 = alto
 
         for (InvestmentHistory h : history) {
-            double valor = h.valor;           // se for Double, trate null conforme necessário
+            double valor = h.valor;
             double rentabilidade = h.rentabilidade;
 
-            totalValor += valor;
-
-            // rentabilidade média ponderada pelo valor investido
-            if (valor > 0) {
-                weightedReturnSum += rentabilidade * valor;
-            } else {
-                weightedReturnSum += rentabilidade;
-            }
+            double peso = valor > 0 ? valor : 1.0;
+            pesoTotal += peso;
+            weightedReturn += rentabilidade * peso;
 
             int riskLevel = deriveRiskLevel(h.tipo);
             if (riskLevel > maxRiskLevel) {
@@ -55,41 +55,29 @@ public class RiskProfileService {
             }
         }
 
-        double avgReturn;
-        if (totalValor > 0) {
-            avgReturn = weightedReturnSum / totalValor;
-        } else {
-            avgReturn = weightedReturnSum / qtdOperacoes;
-        }
+        double avgReturn = (pesoTotal > 0) ? (weightedReturn / pesoTotal) : 0.0;
 
         // ===== 1) Score pela rentabilidade média (0 a ~60) =====
         double returnScore;
         if (avgReturn <= 0) {
-            returnScore = 5;          // rentabilidade ruim/negativa
+            returnScore = 5;
         } else if (avgReturn <= 0.05) {
-            returnScore = 20;         // até 5% ao ano
+            returnScore = 20;
         } else if (avgReturn <= 0.10) {
-            returnScore = 35;         // até 10% ao ano
+            returnScore = 35;
         } else if (avgReturn <= 0.15) {
-            returnScore = 50;         // até 15% ao ano
+            returnScore = 50;
         } else {
-            returnScore = 60;         // acima de 15% ao ano
+            returnScore = 60;
         }
 
         // ===== 2) Score pela exposição ao risco (0 a 25) =====
         double riskExposureScore;
         switch (maxRiskLevel) {
-            case 1: // renda fixa / baixo risco
-                riskExposureScore = 5;
-                break;
-            case 2: // multimercado / médio risco
-                riskExposureScore = 15;
-                break;
-            case 3: // ações / FIIs / renda variável
-                riskExposureScore = 25;
-                break;
-            default:
-                riskExposureScore = 0;
+            case 1 -> riskExposureScore = 5;
+            case 2 -> riskExposureScore = 15;
+            case 3 -> riskExposureScore = 25;
+            default -> riskExposureScore = 0;
         }
 
         // ===== 3) Score pela experiência (qtd de operações) (0 a 15) =====
@@ -110,7 +98,6 @@ public class RiskProfileService {
             rawScore -= 10;
         }
 
-        // Normaliza entre 0 e 100
         int score = (int) Math.round(Math.max(0, Math.min(100, rawScore)));
 
         String perfil;
@@ -127,6 +114,16 @@ public class RiskProfileService {
             descricao = "Perfil com alta tolerância ao risco, aceitando maior volatilidade em troca de potenciais ganhos.";
         }
 
+        // ===== 4) Atualiza o perfil do cliente na tabela CUSTOMER =====
+        Customer customer = customerRepository.findById(clienteId);
+        if (customer != null) {
+            // opcional: se quiser manter padrão em caixa alta como no seed:
+            // customer.perfil = perfil.toUpperCase();
+            customer.perfil = perfil;
+            // como o método é @Transactional, não precisa chamar persist/flush:
+            // o Hibernate fará flush automático no commit
+        }
+
         RiskProfileResponseDTO response = new RiskProfileResponseDTO();
         response.clienteId = clienteId;
         response.perfil = perfil;
@@ -137,12 +134,11 @@ public class RiskProfileService {
 
     private int deriveRiskLevel(String tipo) {
         if (tipo == null) {
-            return 1; // assume baixo se não souber
+            return 1;
         }
 
         String t = tipo.toLowerCase();
 
-        // Alto risco: ações, renda variável, FIIs
         if (t.contains("ação") || t.contains("acoes")
                 || t.contains("renda variável") || t.contains("renda variavel")
                 || t.contains("fii")
@@ -150,7 +146,6 @@ public class RiskProfileService {
             return 3;
         }
 
-        // Médio risco: multimercado, alguns fundos
         if (t.contains("multimercado") || t.contains("fundo")) {
             return 2;
         }
@@ -164,7 +159,6 @@ public class RiskProfileService {
             return 1;
         }
 
-        // Default: baixo
         return 1;
     }
 }
