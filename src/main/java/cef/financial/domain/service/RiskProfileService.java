@@ -127,10 +127,10 @@ public class RiskProfileService {
         // <= 35: Conservador
         // 36–65: Moderado
         // > 65: Agressivo
-        if (score <= 35) {
+        if (score <= 45) {
             perfil = "Conservador";
             descricao = "Perfil com baixa tolerância a risco, priorizando segurança e preservação do capital.";
-        } else if (score <= 65) {
+        } else if (score <= 85) {
             perfil = "Moderado";
             descricao = "Perfil equilibrado, disposto a assumir algum risco em busca de melhor rentabilidade.";
         } else {

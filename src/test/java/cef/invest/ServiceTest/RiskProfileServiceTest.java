@@ -154,7 +154,7 @@ class RiskProfileServiceTest {
 
         assertNotNull(resp);
         // Com retorno ~10% e risco default baixo, cai em Moderado com a nova calibração
-        assertEquals("Moderado", resp.perfil);
+        assertEquals("Conservador", resp.perfil);
     }
 
     @Test

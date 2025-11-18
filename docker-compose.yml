@@ -7,10 +7,35 @@ services:
     environment:
       ACCEPT_EULA: 'Y'
       MSSQL_SA_PASSWORD: 'YourStrong!Passw0rd'
+      MSSQL_PID: 'Developer'
     ports:
       - '1433:1433'
     volumes:
       - sqlserver_data:/var/opt/mssql
+
+  cef-financial:
+    build: .
+    container_name: cef-financial
+    depends_on:
+      - sqlserver
+    ports:
+      - '8080:8080'
+    environment:
+      # Config de datasource (sobrescreve o application.properties)
+      QUARKUS_DATASOURCE_JDBC_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=CEF_FINANCIAL;encrypt=false;trustServerCertificate=true"
+      QUARKUS_DATASOURCE_USERNAME: "sa"
+      QUARKUS_DATASOURCE_PASSWORD: "YourStrong!Passw0rd"
+
+      # Geração de schema (ajuste se já tiver banco pronto)
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: "update"
+
+      # Apenas pra garantir que o Quarkus escute no container
+      QUARKUS_HTTP_PORT: "8080"
+      QUARKUS_HTTP_HOST: "0.0.0.0"
+
+    # Se quiser ver os logs no padrão UTF-8
+    # environment:
+    #   JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8"
 
 volumes:
   sqlserver_data:
