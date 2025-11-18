@@ -89,26 +89,24 @@ public class RiskProfileService {
             returnScore = 40;         // acima de 12% ao ano
         }
 
-        // ===== 2) Score pela exposição ao risco (0 a 30) =====
-        // Mantém a ideia de risco máximo, mas com pesos ajustados
+
         double riskExposureScore;
         switch (maxRiskLevel) {
-            case 1 -> riskExposureScore = 5;   // só renda fixa / baixo risco
+            case 1 -> riskExposureScore = 2;   // só renda fixa / baixo risco
             case 2 -> riskExposureScore = 18;  // multimercado / médio risco
             case 3 -> riskExposureScore = 30;  // ações / FIIs / alta volatilidade
             default -> riskExposureScore = 0;
         }
 
-        // ===== 3) Score pela experiência (qtd de operações) (0 a 25) =====
         double experienceScore;
         if (qtdOperacoes <= 1) {
-            experienceScore = 5;
+            experienceScore = 3;
         } else if (qtdOperacoes <= 3) {
-            experienceScore = 10;
+            experienceScore = 5;
         } else if (qtdOperacoes <= 10) {
-            experienceScore = 18;
+            experienceScore = 12;
         } else {
-            experienceScore = 25;
+            experienceScore = 20;
         }
 
         double rawScore = returnScore + riskExposureScore + experienceScore;
@@ -123,14 +121,11 @@ public class RiskProfileService {
         String perfil;
         String descricao;
 
-        // ===== 4) Faixas calibradas de perfil =====
-        // <= 35: Conservador
-        // 36–65: Moderado
-        // > 65: Agressivo
-        if (score <= 45) {
+
+        if (score <= 65) {
             perfil = "Conservador";
             descricao = "Perfil com baixa tolerância a risco, priorizando segurança e preservação do capital.";
-        } else if (score <= 85) {
+        } else if (score <= 90) {
             perfil = "Moderado";
             descricao = "Perfil equilibrado, disposto a assumir algum risco em busca de melhor rentabilidade.";
         } else {

@@ -58,7 +58,7 @@ class RiskProfileServiceTest {
     }
 
     @Test
-    @DisplayName("2. Deve classificar como Conservador (renda fixa com prejuízo e pouca experiência)")
+    @DisplayName("2. Conservador: renda fixa com prejuízo e pouca experiência")
     void calculateProfile_Conservador() {
         Long clienteId = 2L;
 
@@ -70,12 +70,12 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertEquals("Conservador", resp.perfil);
-        // Novo score com a lógica atual: 5 (retorno) + 5 (risco baixo) + 5 (qtd <=1) = 15
-        assertEquals(15, resp.pontuacao);
+        // avgReturn = -0.01 → returnScore=5, risco baixo=2, pouca experiência=3 => 10
+        assertEquals(10, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("3. Moderado (retorno médio, risco médio, experiência moderada)")
+    @DisplayName("3. Conservador com retorno moderado em multimercado")
     void calculateProfile_Moderado() {
         Long clienteId = 3L;
 
@@ -87,13 +87,13 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
-        assertEquals("Moderado", resp.perfil);
-        // returnScore=25, riskExposure=18, experience=10 -> 53
-        assertEquals(53, resp.pontuacao);
+        // avgReturn = 7% → returnScore=25; risco médio=18; qtd=2 → exp=5 → total=48
+        assertEquals("Conservador", resp.perfil);
+        assertEquals(48, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("4. Agressivo com alta experiência (pontuação muito alta)")
+    @DisplayName("4. Moderado com alta experiência e alta exposição a risco")
     void calculateProfile_Agressivo_SemPenalidade() {
         Long clienteId = 4L;
 
@@ -116,13 +116,13 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
-        assertEquals("Agressivo", resp.perfil);
-        // Com a lógica nova, dá 95 (40 retorno + 30 risco + 25 experiência)
-        assertEquals(95, resp.pontuacao);
+        // maxRiskLevel=3 (Ação/FII), avgReturn > 0.12 → returnScore=40; risco=30; exp (qtd>10)=20 → 90
+        assertEquals("Moderado", resp.perfil);
+        assertEquals(90, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("5. Alta exposição a risco com pouca experiência deve ficar Moderado (penalidade aplicada)")
+    @DisplayName("5. Alta exposição a risco com pouca experiência deve ficar Conservador (penalidade aplicada)")
     void calculateProfile_Agressivo_ComPenalidade() {
         Long clienteId = 5L;
 
@@ -134,14 +134,13 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
-        // Agora, com penalização mais forte, esse caso cai em Moderado
-        assertEquals("Moderado", resp.perfil);
-        // 40 (retorno) + 30 (risco) + 10 (experiência) - 15 (penalidade) = 65
-        assertEquals(65, resp.pontuacao);
+        // avgReturn > 12% → 40; risco=30; exp (qtd=2)=5; subtotal=75; penalidade -15 => 60
+        assertEquals("Conservador", resp.perfil);
+        assertEquals(60, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("6. Tipos desconhecidos continuam levando a perfil Moderado (risco tratado na média)")
+    @DisplayName("6. Tipo desconhecido cai em Conservador com lógica atual")
     void calculateProfile_TipoDesconhecido() {
         Long clienteId = 6L;
 
@@ -153,12 +152,12 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertNotNull(resp);
-        // Com retorno ~10% e risco default baixo, cai em Moderado com a nova calibração
+        // tipo não bate em nada → risco baixo (1); avgReturn 10% → returnScore=35; risco=2; exp=3 => 40
         assertEquals("Conservador", resp.perfil);
     }
 
     @Test
-    @DisplayName("7. Rentabilidade zero em multimercado deve gerar perfil Conservador")
+    @DisplayName("7. Rentabilidade zero em multimercado gera perfil Conservador")
     void calculateProfile_RentabilidadeZero() {
         Long clienteId = 7L;
 
@@ -169,17 +168,17 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
+        // avgReturn=0 → 5; risco médio=18; exp=3 => 26
         assertEquals("Conservador", resp.perfil);
-        // 5 (retorno <=0) + 18 (risco médio) + 5 (pouca experiência) = 28
-        assertEquals(28, resp.pontuacao);
+        assertEquals(26, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("8. Rentabilidade cadastrada como 150% (1.5) deve ser normalizada e não quebrar o cálculo")
+    @DisplayName("8. Rentabilidade cadastrada como 150% (1.5) é normalizada e não quebra o cálculo")
     void calculateProfile_RentabilidadeExtrema() {
         Long clienteId = 8L;
 
-        // 1.5 aqui, com a normalização (>1 -> /100), vira 0.015 (1,5%)
+        // 1.5 → normaliza para 0.015
         InvestmentHistory h1 = history("Ação", 1000.0, 1.5);
 
         when(historyRepository.list("clienteId", clienteId))
@@ -188,11 +187,10 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertNotNull(resp);
-        // Com a lógica atual: 35 pontos -> Conservador
+        // avgReturn ~1.5% → 15; risco=30; exp=3; subtotal=48; penalidade -15 => 33
         assertEquals("Conservador", resp.perfil);
-        assertEquals(35, resp.pontuacao);
+        assertEquals(33, resp.pontuacao);
     }
-
 
     @Test
     @DisplayName("9. Valores zero não devem quebrar o cálculo")
@@ -223,12 +221,12 @@ class RiskProfileServiceTest {
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
         assertNotNull(resp);
-        // Pela combinação (inclui FII e multimercado), tende para Moderado/Agressivo
-        assertTrue(resp.perfil.equals("Moderado") || resp.perfil.equals("Agressivo"));
+        // combinação leva para score ~= 70 → Moderado
+        assertEquals("Moderado", resp.perfil);
     }
 
     @Test
-    @DisplayName("11. Deve lidar com rentabilidade negativa extrema (perfil Conservador)")
+    @DisplayName("11. Rentabilidade muito negativa mantém perfil Conservador")
     void calculateProfile_RentabilidadeMuitoNegativa() {
         Long clienteId = 11L;
 
@@ -238,13 +236,13 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
+        // avgReturn << 0 → 5; risco=2; exp=3 => 10
         assertEquals("Conservador", resp.perfil);
-        // 5 (retorno) + 5 (risco baixo) + 5 (pouca experiência) = 15
-        assertEquals(15, resp.pontuacao);
+        assertEquals(10, resp.pontuacao);
     }
 
     @Test
-    @DisplayName("12. Deve considerar corretamente quantidade MUITO alta de operações (stress test de experiência)")
+    @DisplayName("12. Grande quantidade de operações de alto risco gera score muito alto (Moderado limite superior)")
     void calculateProfile_GrandeQuantidade() {
         Long clienteId = 12L;
 
@@ -256,8 +254,7 @@ class RiskProfileServiceTest {
 
         RiskProfileResponseDTO resp = riskProfileService.calculateProfile(clienteId);
 
-        assertEquals("Agressivo", resp.perfil);
-        // Com a nova lógica, dá 95, mas garantimos apenas que seja bem alto
-        assertTrue(resp.pontuacao >= 90);
+        assertEquals("Moderado", resp.perfil);
+        assertEquals(90, resp.pontuacao);
     }
 }
